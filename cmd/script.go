@@ -12,11 +12,13 @@ import (
 
 var (
 	scriptSudo bool
+	scriptArgs string
 )
 
 func init() {
 	rootCmd.AddCommand(&scriptCmd)
 	scriptCmd.Flags().BoolVar(&scriptSudo, "sudo", false, "是否以sudo方式执行脚本")
+	scriptCmd.Flags().StringVar(&scriptArgs, "args", "", "添加脚本执行的参数")
 }
 
 var scriptCmd = cobra.Command{
@@ -52,7 +54,7 @@ var scriptCmd = cobra.Command{
 				w2.Add(1)
 				go func(term *m_terminal.Terminal) {
 					defer w2.Done()
-					bs, err := term.Run(scriptSudo, fmt.Sprintf("bash /tmp/%s", path.Base(args[0])))
+					bs, err := term.Run(scriptSudo, fmt.Sprintf("bash /tmp/%s %s", path.Base(args[0]), scriptArgs))
 					if err == nil {
 						chRst <- &commandResult{
 							u:   term.GetUser(),
