@@ -6,7 +6,6 @@ import (
 	"multi_ssh/model"
 	"os"
 	"regexp"
-	"strings"
 )
 
 /*
@@ -21,13 +20,11 @@ username, password, host:port
 
 var (
 	ignoreLine *regexp.Regexp
-	seperate   *regexp.Regexp
 	spaceLine  *regexp.Regexp
 )
 
 func init() {
 	ignoreLine, _ = regexp.Compile(`^\s*#`)
-	seperate, _ = regexp.Compile(`\s*,\s*`)
 	spaceLine, _ = regexp.Compile(`^\s+$`)
 }
 
@@ -49,14 +46,11 @@ func ReadHosts(path string) ([]*model.SSHUserByPassphrase, error) {
 		if ignoreLine.MatchString(line) {
 			continue
 		}
-		line = strings.TrimSpace(line)
-		piece := seperate.Split(line, -1)
-		u := model.SSHUserByPassphrase{
-			UserName:   piece[0],
-			Password:   piece[1],
-			RemoteHost: piece[2],
+		u, err := model.NewSSHUserByPassphraseWithStringLine(line)
+		if err != nil {
+			return rst, err
 		}
-		rst = append(rst, &u)
+		rst = append(rst, u)
 	}
 	return rst, nil
 }

@@ -10,6 +10,12 @@ import (
 	"path"
 )
 
+func (t *Terminal) Remove(path string) error {
+	return t.sftpClient.Remove(path)
+}
+
+type handleByFile func(*sftp.File) error
+
 func (t *Terminal) GetSftpClient() (*sftp.Client, error) {
 	return sftp.NewClient(t.client)
 }
@@ -26,17 +32,27 @@ func (t *Terminal) SftpOpen(path string) ([]byte, error) {
 	return ioutil.ReadAll(b)
 }
 
-func (t *Terminal) SftpUpdate(_path, remotePath string) error {
+func (t *Terminal) SftpUpdates(srcPaths []string, remotePath string, fn handleByFile) error {
+	for _, s := range srcPaths {
+		err := t.SftpUpdate(s, remotePath, fn)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *Terminal) SftpUpdate(_path, remotePath string, fn handleByFile) error {
 	b, err := ioutil.ReadFile(_path)
 	if err != nil {
 		panic(err)
 	}
 	rd := bytes.NewReader(b)
 	filename := path.Base(_path)
-	return t.SftpUpdateByReader(filename, rd, remotePath)
+	return t.SftpUpdateByReaderWithFunc(filename, rd, remotePath, fn)
 }
 
-func (t *Terminal) SftpUpdateByReader(filename string, reader io.Reader, remotePath string) error {
+func (t *Terminal) SftpUpdateByReaderWithFunc(filename string, reader io.Reader, remotePath string, fn handleByFile) error {
 	t.sftpReady()
 	f, err := t.sftpClient.Create(path.Join(remotePath, filename))
 	defer func() {
@@ -47,6 +63,12 @@ func (t *Terminal) SftpUpdateByReader(filename string, reader io.Reader, remoteP
 	}
 	w := bufio.NewWriter(f)
 	_, err = w.ReadFrom(reader)
+	if err == nil && fn != nil {
+		err := fn(f)
+		if err != nil {
+			return err
+		}
+	}
 	return err
 }
 

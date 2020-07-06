@@ -1,18 +1,16 @@
 package main
 
 import (
-	"multi_ssh/m_terminal"
-	"multi_ssh/model"
+	"fmt"
+	"multi_ssh/tools"
 	"testing"
 )
 
 func Test1(t *testing.T) {
-	u := model.SSHUserByPassphrase{
-		UserName: "serv",
-		Password: "123456",
-		RemoteHost: "192.168.101.16:22",
+	s := "r-xrwxr-x"
+	mode, err := tools.String2FileMode(s)
+	fmt.Printf("%b", mode)
+	if err != nil {
+		fmt.Println(err.Error())
 	}
-	client, _ := m_terminal.GetSSHClientByPassphrase(&u)
-	_ = client.SftpUpdate("/home/pengda/myCode/go/multi_ssh/main.go", "/home/serv")
-	//println(err.Error())
 }

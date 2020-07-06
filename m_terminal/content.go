@@ -13,11 +13,11 @@ type par struct {
 	length     int
 	cap        int
 	sync.RWMutex
-	chg chan struct{}
+	chg        chan struct{}
 	wantAtTime bool
 }
 
-func (p *par) pop(src []byte)  {
+func (p *par) pop(src []byte) {
 	str := string(src)
 	if p.length != p.cap {
 		p.length++
@@ -68,9 +68,9 @@ func (p *par) GetLastParByTime(t time.Time) string {
 }
 
 type content2 struct {
-	out par
-	stdout par
-	stderr par
+	out       par
+	stdout    par
+	stderr    par
 	sharePool map[string]interface{}
 }
 

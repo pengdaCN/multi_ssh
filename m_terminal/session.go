@@ -5,10 +5,18 @@ import (
 	"io"
 )
 
+var (
+	modes = ssh.TerminalModes{
+		ssh.ECHO:          0,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+)
+
 type TermSession struct {
 	*ssh.Session
 	TermStdin io.WriteCloser
-	rst []byte
+	rst       []byte
 }
 
 func (t *Terminal) NewSession() (*TermSession, error) {
@@ -17,11 +25,6 @@ func (t *Terminal) NewSession() (*TermSession, error) {
 		return nil, err
 	}
 	{
-		modes := ssh.TerminalModes{
-			ssh.ECHO:          0,
-			ssh.TTY_OP_ISPEED: 14400,
-			ssh.TTY_OP_OSPEED: 14400,
-		}
 		if err := s.RequestPty("xterm", 40, 80, modes); err != nil {
 			return nil, err
 		}

@@ -7,13 +7,13 @@ func (o out) Write(src []byte) (n int, err error) {
 	return len(src), nil
 }
 
-func readFromRemote(t *Terminal, s *TermSession)  {
+func readFromRemote(t *Terminal, s *TermSession) {
 	stdout, ok := s.Stdout.(out)
-	if ! ok {
+	if !ok {
 		panic("stdout 不是out类型")
 	}
 	stderr, ok := s.Stderr.(out)
-	if ! ok {
+	if !ok {
 		panic("stderr 不是out类型")
 	}
 	for {
@@ -21,15 +21,15 @@ func readFromRemote(t *Terminal, s *TermSession)  {
 			break
 		}
 		select {
-		case o, ok := <- stdout:
-			if ! ok {
+		case o, ok := <-stdout:
+			if !ok {
 				stdout = nil
 				continue
 			}
 			_, _ = t.termStdoutCache.Write(o)
 			s.rst = append(s.rst, o...)
-		case o2, ok := <- stderr:
-			if ! ok {
+		case o2, ok := <-stderr:
+			if !ok {
 				stdout = nil
 				continue
 			}

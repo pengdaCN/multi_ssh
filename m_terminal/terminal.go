@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
-	model "multi_ssh/model"
+	"multi_ssh/model"
 	"strings"
 	"time"
 )
@@ -81,7 +81,7 @@ type Terminal struct {
 /*
 使用默认的Terminal
 	在默认启用的钩子有，sudo
- */
+*/
 func NewTerminalWithDefault(user model.SHHUser) (*Terminal, error) {
 	t, err := GetSSHClientByPassphrase(user)
 	if err != nil {
@@ -124,15 +124,15 @@ func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
 	}, nil
 }
 
-func (t *Terminal) RegistryHookBeforeExec(fn ...chip)  {
+func (t *Terminal) RegistryHookBeforeExec(fn ...chip) {
 	t.hookBeforeExec = append(t.hookBeforeExec, fn...)
 }
 
-func (t *Terminal) RegistryHookAfterExec(fn ...chip)  {
+func (t *Terminal) RegistryHookAfterExec(fn ...chip) {
 	t.hookAfterExec = append(t.hookAfterExec, fn...)
 }
 
-func (t *Terminal) Run2(cmd string) ([]byte, error) {
+func (t *Terminal) Run2(cmd string, sudo bool) ([]byte, error) {
 	rst := make([]byte, 0)
 	s, err := t.client.NewSession()
 	if err != nil {
@@ -167,10 +167,11 @@ func (t *Terminal) Run2(cmd string) ([]byte, error) {
 					stdout = nil
 					continue
 				}
+				_, _ = t.termStdoutCache.Write(o)
 				rst = append(rst, o...)
 				str := string(o)
 				parten := fmt.Sprintf(sudoPrefix, t.user.User())
-				if strings.Contains(str, parten) {
+				if strings.Contains(str, parten) && sudo {
 					u, _ := t.user.(*model.SSHUserByPassphrase)
 					_, err := stdin.Write([]byte(u.Password + "\n"))
 					if err != nil {
@@ -182,12 +183,17 @@ func (t *Terminal) Run2(cmd string) ([]byte, error) {
 					stderr = nil
 					continue
 				}
+				_, _ = t.termStderrCache.Write(o2)
 				rst = append(rst, o2...)
 			}
 		}
 	}()
 	err = s.Run(cmd)
 	return rst, err
+}
+
+func (t *Terminal) GetUser() model.SHHUser {
+	return t.user
 }
 
 func (t *Terminal) Run(ignoreError bool, cmd ...string) ([]byte, error) {
