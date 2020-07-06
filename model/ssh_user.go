@@ -18,13 +18,13 @@ type SHHUser interface {
 }
 
 var (
-	seperate      *regexp.Regexp
+	separate      *regexp.Regexp
 	ignoreLine, _ = regexp.Compile(`^\s*#`)
 	spaceLine, _  = regexp.Compile(`^\s+$`)
 )
 
 func init() {
-	seperate, _ = regexp.Compile(`\s*,\s*`)
+	separate, _ = regexp.Compile(`\s*,\s*`)
 	ignoreLine, _ = regexp.Compile(`^\s*#`)
 	spaceLine, _ = regexp.Compile(`^\s+$`)
 }
@@ -64,7 +64,7 @@ func ReadHosts(path string) ([]*SSHUserByPassphrase, error) {
 
 func NewSSHUserByPassphraseWithStringLine(line string) (*SSHUserByPassphrase, error) {
 	line = strings.TrimSpace(line)
-	piece := seperate.Split(line, -1)
+	piece := separate.Split(line, -1)
 	if len(piece) < 3 {
 		return nil, errors.New("解析一行数据错误")
 	}
@@ -75,18 +75,6 @@ func NewSSHUserByPassphraseWithStringLine(line string) (*SSHUserByPassphrase, er
 	}
 	return &u, nil
 }
-
-//func OpenSHHUsers(users ...SHHUser) ([]*m_terminal.Terminal, error) {
-//	rst := make([]*m_terminal.Terminal, 0)
-//	for _, u := range users {
-//		c, err := m_terminal.GetSSHClientByPassphrase(u)
-//		if err != nil {
-//			return rst, err
-//		}
-//		rst = append(rst, c)
-//	}
-//	return rst, nil
-//}
 
 func (s *SSHUserByPassphrase) Host() string {
 	return s.RemoteHost

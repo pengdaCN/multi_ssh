@@ -45,7 +45,7 @@ var shellCmd = cobra.Command{
 			w.Add(1)
 			go func(term *m_terminal.Terminal) {
 				defer w.Done()
-				bs, err := term.Run2(args[0], enableSudo)
+				bs, err := term.Run(enableSudo, args[0])
 				if err == nil {
 					ch <- &commandResult{
 						u:   term.GetUser(),

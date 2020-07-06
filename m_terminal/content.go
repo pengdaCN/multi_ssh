@@ -14,7 +14,12 @@ type par struct {
 	cap        int
 	sync.RWMutex
 	chg        chan struct{}
-	wantAtTime bool
+}
+
+func NewPar() *par {
+	return &par{
+		length: line,
+	}
 }
 
 func (p *par) pop(src []byte) {
@@ -41,9 +46,6 @@ func (p *par) pop(src []byte) {
 func (p *par) Write(src []byte) (n int, err error) {
 	p.Lock()
 	p.updateTime = time.Now()
-	if p.wantAtTime {
-		<-p.chg
-	}
 	p.pop(src)
 	p.Unlock()
 	return len(src), nil
@@ -56,24 +58,15 @@ func (p *par) GetLastPar() string {
 	return tmp
 }
 
-func (p *par) GetLastParByTime(t time.Time) string {
-	p.RLock()
-	if p.updateTime.Before(t) {
-		p.wantAtTime = true
-		p.chg <- struct{}{}
-	}
-	p.RUnlock()
-	tmp := p.GetLastPar()
-	return tmp
-}
-
 type content2 struct {
-	out       par
-	stdout    par
-	stderr    par
+	out       *par
+	stdout    *par
+	stderr    *par
 	sharePool map[string]interface{}
 }
 
-//func GetOutLast() string {
-//
-//}
+func NewContent2() *content2 {
+	return &content2{
+		out: NewPar(),
+	}
+}

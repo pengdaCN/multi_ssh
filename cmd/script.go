@@ -22,7 +22,7 @@ func init() {
 var scriptCmd = cobra.Command{
 	Use:   "script file",
 	Short: "将本地脚本上传到远端并执行",
-	Args: cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		chTerm := make(chan *m_terminal.Terminal, 0)
 		var w sync.WaitGroup
@@ -52,7 +52,7 @@ var scriptCmd = cobra.Command{
 				w2.Add(1)
 				go func(term *m_terminal.Terminal) {
 					defer w2.Done()
-					bs, err := term.Run2(fmt.Sprintf("bash /tmp/%s", path.Base(args[0])), scriptSudo)
+					bs, err := term.Run(scriptSudo, fmt.Sprintf("bash /tmp/%s", path.Base(args[0])))
 					if err == nil {
 						chRst <- &commandResult{
 							u:   term.GetUser(),
