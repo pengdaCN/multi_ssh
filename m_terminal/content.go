@@ -13,7 +13,7 @@ type par struct {
 	length     int
 	cap        int
 	sync.RWMutex
-	chg        chan struct{}
+	chg chan struct{}
 }
 
 func NewPar() *par {

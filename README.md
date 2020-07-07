@@ -38,3 +38,14 @@ shell：执行一行shell命令，更多可以通过help获取帮助
 script：将本地文件在远端上执行，更多可以通过help获取帮助
 
 copy：将本地文件拷贝到远端，更多可以通过help获取帮助
+
+#### 常见示例
+
+```shell
+# 在hosts.txt文件中的主机执行pt.sh脚本，使用exmine -v作为参数
+multi_ssh --hosts hosts.txt script --sudo --args 'examine -v' pt.sh 
+# 执hosts.txt文件中的主机执行单条命令，自动输入sudo密码
+multi_ssh --hosts hosts.txt shell --sudo 'sudo shutdown now'
+# 从命令行中出入一条主机信息进行操作
+multi_ssh --line 'panda, 123456, local.panda.org:22' shell 'you-get --version'
+```

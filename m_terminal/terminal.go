@@ -11,8 +11,6 @@ const (
 	line = 1000
 )
 
-//type chip func(*Terminal, *TermSession, []byte)
-
 type content struct {
 	data       [line]string
 	updateTime time.Time
@@ -66,8 +64,6 @@ type Terminal struct {
 	termCache       *content
 	termStdoutCache *content
 	termStderrCache *content
-	//hookBeforeExec  []chip
-	//hookAfterExec   []chip
 	iBefore         uint8
 	iAfter          uint8
 }
@@ -92,79 +88,12 @@ func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
 	}, nil
 }
 
-//func (t *Terminal) RegistryHookBeforeExec(fn ...chip) {
-//	t.hookBeforeExec = append(t.hookBeforeExec, fn...)
-//}
-//
-//func (t *Terminal) RegistryHookAfterExec(fn ...chip) {
-//	t.hookAfterExec = append(t.hookAfterExec, fn...)
-//}
-
-//func (t *Terminal) Run2(cmd string, sudo bool) ([]byte, error) {
-//	rst := make([]byte, 0)
-//	s, err := t.client.NewSession()
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer func() {
-//		_ = s.Close()
-//	}()
-//	{
-//		modes := ssh.TerminalModes{
-//			ssh.ECHO:          0,
-//			ssh.TTY_OP_ISPEED: 14400,
-//			ssh.TTY_OP_OSPEED: 14400,
-//		}
-//		if err := s.RequestPty("xterm", 40, 80, modes); err != nil {
-//			return nil, err
-//		}
-//	}
-//	stdout := make(out, 0)
-//	stderr := make(out, 0)
-//	s.Stdout = stdout
-//	s.Stderr = stderr
-//	stdin, err := s.StdinPipe()
-//	if err != nil {
-//		panic(err)
-//	}
-//	go func() {
-//		for {
-//			select {
-//			case o, ok := <-stdout:
-//				if !ok {
-//					stdout = nil
-//					continue
-//				}
-//				_, _ = t.termStdoutCache.Write(o)
-//				rst = append(rst, o...)
-//				str := string(o)
-//				parten := fmt.Sprintf(sudoPrefix, t.user.User())
-//				if sudo && strings.Contains(str, parten) {
-//					u, _ := t.user.(*model.SSHUserByPassphrase)
-//					_, err := stdin.Write([]byte(u.Password + "\n"))
-//					if err != nil {
-//						panic(err)
-//					}
-//				}
-//			case o2, ok := <-stderr:
-//				if !ok {
-//					stderr = nil
-//					continue
-//				}
-//				_, _ = t.termStderrCache.Write(o2)
-//				rst = append(rst, o2...)
-//			}
-//		}
-//	}()
-//	err = s.Run(cmd)
-//	return rst, err
-//}
-
 func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {
 	session, err := t.NewSession()
 	if err != nil {
 		return nil, err
 	}
+	// 为了sudo的字符串可以匹配
 	cmd = "LANG=en_US.utf8;LANGUAGE=en_US.utf8;" + cmd
 	err = session.Run(t, sudo, cmd)
 	return session.rst, err

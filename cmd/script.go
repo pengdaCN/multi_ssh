@@ -55,7 +55,13 @@ var scriptCmd = cobra.Command{
 				w2.Add(1)
 				go func(term *m_terminal.Terminal) {
 					defer w2.Done()
-					bs, err := term.Run(scriptSudo, fmt.Sprintf("bash /tmp/%s %s", path.Base(args[0]), scriptArgs))
+					var cmd string
+					if scriptSudo {
+						cmd = fmt.Sprintf("sudo bash /tmp/%s %s", path.Base(args[0]), scriptArgs)
+					} else {
+						cmd = fmt.Sprintf("bash /tmp/%s %s", path.Base(args[0]), scriptArgs)
+					}
+					bs, err := term.Run(scriptSudo, cmd)
 					if err == nil {
 						chRst <- &commandResult{
 							u:   term.GetUser(),

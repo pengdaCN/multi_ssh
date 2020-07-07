@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	hosts    string
-	hostLine string
+	hosts     string
+	hostLine  string
 	outFormat string
 )
 

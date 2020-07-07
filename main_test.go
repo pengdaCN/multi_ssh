@@ -9,8 +9,8 @@ import (
 
 func Test1(t *testing.T) {
 	u := model.SSHUserByPassphrase{
-		UserName: "panda",
-		Password: "123456",
+		UserName:   "panda",
+		Password:   "123456",
 		RemoteHost: "192.168.122.10:22",
 	}
 	client, err := m_terminal.GetSSHClientByPassphrase(&u)

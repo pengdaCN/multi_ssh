@@ -59,7 +59,7 @@ func (s *TermSession) Run(term *Terminal, enableSudo bool, cmd string) error {
 				break
 			}
 			select {
-			case o, ok := <- stdout:
+			case o, ok := <-stdout:
 				if !ok {
 					stdout = nil
 					continue
@@ -72,7 +72,7 @@ func (s *TermSession) Run(term *Terminal, enableSudo bool, cmd string) error {
 						break
 					}
 				}
-			case o2, ok := <- stderr:
+			case o2, ok := <-stderr:
 				if !ok {
 					stderr = nil
 					continue
