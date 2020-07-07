@@ -165,6 +165,7 @@ func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	cmd = "LANG=en_US.utf8;LANGUAGE=en_US.utf8;" + cmd
 	err = session.Run(t, sudo, cmd)
 	return session.rst, err
 }

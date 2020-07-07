@@ -42,6 +42,9 @@ func (t *Terminal) NewSession() (*TermSession, error) {
 }
 
 func (s *TermSession) Run(term *Terminal, enableSudo bool, cmd string) error {
+	defer func() {
+		_ = s.Session.Close()
+	}()
 	go func() {
 		for {
 			stdout, ok := s.Stdout.(out)

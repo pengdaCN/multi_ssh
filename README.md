@@ -1,6 +1,6 @@
 ## multi_ssh
 ### 什么是multi_ssh
-> multi_ssh是一个简单的ssh客户客户端工具，为了使在进行运维数量不多时机器时，提供一个简单的ssh批量处理工具
+> multi_ssh是一个简单的ssh客户客户端工具，方便在运维数量不多时机器时，提供一个简单的ssh批量处理工具
 
 ### multi_ssh使用
 
@@ -11,7 +11,7 @@ example
 multi_ssh --line 'panda, 123456, local.panda.org:22' shell 'whoami'
 ```
 
-在该实例中，multi_ssh 命令的flag`--line`作用是冲命令行中传递需要被操作的主机，格式与hosts格式一样，`shell`子命令是用于重终端执行一行命令使用，在该示例中则代表执行`whoami`命令
+在该实例中，multi_ssh 命令的flag`--line`作用是从命令行中传递需要被操作的主机，格式与hosts格式一样，`shell`子命令是用于重终端执行一行命令使用，在该示例中则代表执行`whoami`命令
 
 在multi_ssh中，子命令代表执行具体的操作，根命令的flag用于选择需要被执行具体操作的主机
 
@@ -20,6 +20,8 @@ multi_ssh --line 'panda, 123456, local.panda.org:22' shell 'whoami'
 --line：从命令行读一行的用户信息，格式与hosts文件格式一样
 
 --hosts：从命令行读取hosts文件的位置，默认是`./hosts`
+
+--format：定义输出的格式
 
 **hosts文件格式**
 

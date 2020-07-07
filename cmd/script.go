@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"log"
 	"multi_ssh/m_terminal"
+	"os"
 	"path"
 	"sync"
 	"time"
@@ -46,7 +47,7 @@ var scriptCmd = cobra.Command{
 		chRst := make(chan *commandResult, 0)
 		go func() {
 			for r := range chRst {
-				fmt.Printf("%s\n\t%s\n", r.u.Host(), string(r.msg))
+				outputByFormat(outFormat, r, os.Stdout)
 			}
 		}()
 		go func() {

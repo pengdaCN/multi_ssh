@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/pkg/sftp"
 	"github.com/spf13/cobra"
 	"multi_ssh/m_terminal"
 	"multi_ssh/tools"
+	"os"
 	"sync"
 	"time"
 )
@@ -33,7 +33,7 @@ var copyCmd = cobra.Command{
 		ch := make(chan *commandResult, 0)
 		go func() {
 			for m := range ch {
-				fmt.Printf("%s\n\t%s\n", m.u.Host(), string(m.msg))
+				outputByFormat(outFormat, m, os.Stdout)
 			}
 		}()
 		var w sync.WaitGroup

@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
+	"log"
 	"multi_ssh/m_terminal"
 	"multi_ssh/model"
+	"os"
 	"sync"
 	"time"
 )
@@ -33,11 +34,17 @@ var shellCmd = cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ch := make(chan *commandResult, 0)
 		go func() {
+			var f *os.File
 			if saveFile != "" {
-				//	TODO 后续添加保存功能
+				var err error
+				f, err = os.Create(saveFile)
+				if err != nil {
+					log.Println("创建文件失败", err.Error())
+					panic(err)
+				}
 			}
 			for r := range ch {
-				fmt.Printf("%s\n\t%s\n", r.u.Host(), string(r.msg))
+				outputByFormat(outFormat, r, os.Stdout, f)
 			}
 		}()
 		var w sync.WaitGroup
