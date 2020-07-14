@@ -8,64 +8,71 @@ import (
 )
 
 const (
-	line = 1000
+	line             = 1000
+	cmdPrefixGeneric = `LANG=en_US.utf8;LANGUAGE=en_US.utf8;`
 )
 
-type content struct {
-	data       [line]string
-	updateTime time.Time
-	floor      int
-	heap       int
-	length     int
-	cap        int
-}
-
-func newContent() *content {
-	return &content{
-		cap: line,
+var (
+	modes = ssh.TerminalModes{
+		ssh.ECHO:          0,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
 	}
-}
+)
 
-func (c *content) pop(src []byte) {
-	str := string(src)
-	if c.length != c.cap {
-		c.length++
-		c.heap++
-		c.data[c.heap] = str
-		return
-	}
-	if c.floor+1 != c.cap {
-		c.floor++
-	} else {
-		c.floor = 0
-	}
-	if c.heap+1 != c.cap {
-		c.heap++
-	} else {
-		c.heap = 0
-	}
-	c.data[c.heap] = str
-}
-
-func (c *content) getLast() string {
-	return c.data[c.heap]
-}
-
-func (c *content) Write(src []byte) (n int, err error) {
-	c.pop(src)
-	c.updateTime = time.Now()
-	return len(src), nil
-}
+//type content struct {
+//	data       [line]string
+//	updateTime time.Time
+//	floor      int
+//	heap       int
+//	length     int
+//	cap        int
+//}
+//
+//func newContent() *content {
+//	return &content{
+//		cap: line,
+//	}
+//}
+//
+//func (c *content) pop(src []byte) {
+//	str := string(src)
+//	if c.length != c.cap {
+//		c.length++
+//		c.heap++
+//		c.data[c.heap] = str
+//		return
+//	}
+//	if c.floor+1 != c.cap {
+//		c.floor++
+//	} else {
+//		c.floor = 0
+//	}
+//	if c.heap+1 != c.cap {
+//		c.heap++
+//	} else {
+//		c.heap = 0
+//	}
+//	c.data[c.heap] = str
+//}
+//
+//func (c *content) getLast() string {
+//	return c.data[c.heap]
+//}
+//
+//func (c *content) Write(src []byte) (n int, err error) {
+//	c.pop(src)
+//	c.updateTime = time.Now()
+//	return len(src), nil
+//}
 
 type Terminal struct {
 	user            model.SHHUser
 	client          *ssh.Client
 	sftpClient      *sftp.Client
-	termCache       *content
-	termStdoutCache *content
-	termStderrCache *content
-	iBefore         uint8
-	iAfter          uint8
+	content *content
+	//iBefore         uint8
+	//iAfter          uint8
 }
 
 func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
@@ -82,9 +89,7 @@ func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
 	return &Terminal{
 		user:            user,
 		client:          client,
-		termCache:       newContent(),
-		termStderrCache: newContent(),
-		termStdoutCache: newContent(),
+		content: NewContent(),
 	}, nil
 }
 
@@ -94,9 +99,26 @@ func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {
 		return nil, err
 	}
 	// 为了sudo的字符串可以匹配
-	cmd = "LANG=en_US.utf8;LANGUAGE=en_US.utf8;" + cmd
+	cmd = cmdPrefixGeneric + cmd
 	err = session.Run(t, sudo, cmd)
 	return session.rst, err
+}
+
+func (t *Terminal) GetSessionWithTerm() (*ssh.Session, error) {
+	s, err := t.client.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	{
+		if err := s.RequestPty("xterm", 40, 80, modes); err != nil {
+			return nil, err
+		}
+	}
+	return s, nil
+}
+
+func (t *Terminal) GetContent() *content {
+	return t.content
 }
 
 func (t *Terminal) GetUser() model.SHHUser {

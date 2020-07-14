@@ -38,6 +38,9 @@ var shellCmd = cobra.Command{
 			if saveFile != "" {
 				var err error
 				f, err = os.Create(saveFile)
+				defer func() {
+					_ = f.Close()
+				}()
 				if err != nil {
 					log.Println("创建文件失败", err.Error())
 					panic(err)

@@ -12,14 +12,16 @@ import (
 )
 
 var (
-	scriptSudo bool
-	scriptArgs string
+	scriptSudo     bool
+	scriptArgs     string
+	scriptSavePath string
 )
 
 func init() {
 	rootCmd.AddCommand(&scriptCmd)
 	scriptCmd.Flags().BoolVar(&scriptSudo, "sudo", false, "是否以sudo方式执行脚本")
 	scriptCmd.Flags().StringVar(&scriptArgs, "args", "", "添加脚本执行的参数")
+	scriptCmd.Flags().StringVar(&scriptSavePath, "save", "", "将脚本输出保存到文件中")
 }
 
 var scriptCmd = cobra.Command{
@@ -46,8 +48,20 @@ var scriptCmd = cobra.Command{
 		var w2 sync.WaitGroup
 		chRst := make(chan *commandResult, 0)
 		go func() {
+			var f *os.File
+			if scriptSavePath != "" {
+				var err error
+				f, err = os.Create(saveFile)
+				defer func() {
+					_ = f.Close()
+				}()
+				if err != nil {
+					log.Println("创建文件失败", err.Error())
+					panic(err)
+				}
+			}
 			for r := range chRst {
-				outputByFormat(outFormat, r, os.Stdout)
+				outputByFormat(outFormat, r, f, os.Stdout)
 			}
 		}()
 		go func() {

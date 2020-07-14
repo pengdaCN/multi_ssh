@@ -6,14 +6,6 @@ import (
 	"log"
 )
 
-var (
-	modes = ssh.TerminalModes{
-		ssh.ECHO:          0,
-		ssh.TTY_OP_ISPEED: 14400,
-		ssh.TTY_OP_OSPEED: 14400,
-	}
-)
-
 type TermSession struct {
 	*ssh.Session
 	TermStdin io.WriteCloser
@@ -21,14 +13,9 @@ type TermSession struct {
 }
 
 func (t *Terminal) NewSession() (*TermSession, error) {
-	s, err := t.client.NewSession()
+	s, err := t.GetSessionWithTerm()
 	if err != nil {
 		return nil, err
-	}
-	{
-		if err := s.RequestPty("xterm", 40, 80, modes); err != nil {
-			return nil, err
-		}
 	}
 	ts := new(TermSession)
 	ts.Session = s
@@ -64,7 +51,7 @@ func (s *TermSession) Run(term *Terminal, enableSudo bool, cmd string) error {
 					stdout = nil
 					continue
 				}
-				_, _ = term.termStderrCache.Write(o)
+				_, _ = term.content.stdout.Write(o)
 				s.rst = append(s.rst, o...)
 				if enableSudo {
 					if err := sudo(term, o, s.TermStdin); err != nil {
@@ -77,7 +64,7 @@ func (s *TermSession) Run(term *Terminal, enableSudo bool, cmd string) error {
 					stderr = nil
 					continue
 				}
-				_, _ = term.termStderrCache.Write(o2)
+				_, _ = term.content.stderr.Write(o2)
 				s.rst = append(s.rst, o2...)
 			}
 		}

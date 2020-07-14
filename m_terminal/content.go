@@ -1,6 +1,7 @@
 package m_terminal
 
 import (
+	"multi_ssh/extra_mod/host_info"
 	"sync"
 	"time"
 )
@@ -58,15 +59,29 @@ func (p *par) GetLastPar() string {
 	return tmp
 }
 
-type content2 struct {
+type content struct {
 	out       *par
 	stdout    *par
 	stderr    *par
 	sharePool map[string]interface{}
 }
 
-func NewContent2() *content2 {
-	return &content2{
+func NewContent() *content {
+	return &content{
 		out: NewPar(),
+		stderr: NewPar(),
+		stdout: NewPar(),
+		sharePool: make(map[string]interface{}),
 	}
+}
+
+func (c *content) GetHostInfo() (*host_info.HostGenericInfo, bool) {
+	if v, ok := c.sharePool[HostInfoKey]; ok {
+		if info, sok := v.(*host_info.HostGenericInfo); sok {
+			return info, true
+		} else {
+			return nil, false
+		}
+	}
+	return nil, false
 }
