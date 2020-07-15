@@ -20,59 +20,28 @@ var (
 	}
 )
 
-//type content struct {
-//	data       [line]string
-//	updateTime time.Time
-//	floor      int
-//	heap       int
-//	length     int
-//	cap        int
-//}
-//
-//func newContent() *content {
-//	return &content{
-//		cap: line,
-//	}
-//}
-//
-//func (c *content) pop(src []byte) {
-//	str := string(src)
-//	if c.length != c.cap {
-//		c.length++
-//		c.heap++
-//		c.data[c.heap] = str
-//		return
-//	}
-//	if c.floor+1 != c.cap {
-//		c.floor++
-//	} else {
-//		c.floor = 0
-//	}
-//	if c.heap+1 != c.cap {
-//		c.heap++
-//	} else {
-//		c.heap = 0
-//	}
-//	c.data[c.heap] = str
-//}
-//
-//func (c *content) getLast() string {
-//	return c.data[c.heap]
-//}
-//
-//func (c *content) Write(src []byte) (n int, err error) {
-//	c.pop(src)
-//	c.updateTime = time.Now()
-//	return len(src), nil
-//}
+type HookFunc func(*Terminal)
 
 type Terminal struct {
-	user            model.SHHUser
-	client          *ssh.Client
-	sftpClient      *sftp.Client
-	content *content
-	//iBefore         uint8
-	//iAfter          uint8
+	user          model.SHHUser
+	client        *ssh.Client
+	sftpClient    *sftp.Client
+	content       *content
+	currentCmd    string
+	currentRawCmd string
+	preHook       []HookFunc
+	preIndex      uint8
+	postHook      []HookFunc
+	postIndex     uint8
+}
+
+func DefaultWithPassphrase(user model.SHHUser) (*Terminal, error) {
+	term, err := GetSSHClientByPassphrase(user)
+	if err != nil {
+		return nil, err
+	}
+	term.RreUse(ExpandCmd)
+	return term, nil
 }
 
 func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
@@ -87,19 +56,44 @@ func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
 		return nil, err
 	}
 	return &Terminal{
-		user:            user,
-		client:          client,
+		user:    user,
+		client:  client,
 		content: NewContent(),
 	}, nil
 }
 
+func (t *Terminal) RreUse(fn ...HookFunc) {
+	t.preHook = append(t.preHook, fn...)
+}
+
+func (t *Terminal) PostUse(fn ...HookFunc) {
+	t.postHook = append(t.postHook, fn...)
+}
+
+func (t *Terminal) pressCmd(cmd string) {
+	t.currentCmd = cmdPrefixGeneric + cmd
+}
+
 func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {
+	t.currentRawCmd = cmd
+	for ; t.preIndex < uint8(len(t.preHook)); t.preIndex++ {
+		t.preHook[t.preIndex](t)
+	}
+	rst, err := t.run(sudo, t.currentCmd)
+	if err != nil {
+		//	TODO 后续添加，对于执行命令报错的处理
+	}
+	for ; t.postIndex < uint8(len(t.postHook)); t.postIndex++ {
+		t.postHook[t.postIndex](t)
+	}
+	return rst, err
+}
+
+func (t *Terminal) run(sudo bool, cmd string) ([]byte, error) {
 	session, err := t.NewSession()
 	if err != nil {
 		return nil, err
 	}
-	// 为了sudo的字符串可以匹配
-	cmd = cmdPrefixGeneric + cmd
 	err = session.Run(t, sudo, cmd)
 	return session.rst, err
 }

@@ -14,6 +14,7 @@ var (
 	hosts     string
 	hostLine  string
 	outFormat string
+	preInfo   bool
 )
 
 var (
@@ -22,9 +23,10 @@ var (
 )
 
 func init() {
-	rootCmd.Flags().StringVar(&hosts, "hosts", "./hosts", "multi_ssh 读取hosts配置文件")
-	rootCmd.Flags().StringVar(&hostLine, "line", "", "从cli中读取要连接的信息")
-	rootCmd.Flags().StringVar(&outFormat, "format", defaultOutputFormat, "以指定格式输出信息")
+	rootCmd.Flags().StringVarP(&hosts, "hosts", "", "./hosts", "multi_ssh 读取hosts配置文件")
+	rootCmd.Flags().StringVarP(&hostLine, "line", "", "", "从cli中读取要连接的信息")
+	rootCmd.Flags().StringVarP(&outFormat, "format", "f", defaultOutputFormat, "以指定格式输出信息")
+	rootCmd.Flags().BoolVarP(&preInfo, "uinfo", "", true, "是否在对主机操作之前获取他的信息")
 }
 
 var rootCmd = cobra.Command{
@@ -67,6 +69,9 @@ var rootCmd = cobra.Command{
 					return
 				} else {
 					log.Printf("打开%s成功", user.Host())
+				}
+				if preInfo {
+					m_terminal.GetRemoteHostInfo(c)
 				}
 				ch <- c
 			}(u)

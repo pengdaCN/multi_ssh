@@ -25,7 +25,7 @@ type Group struct {
 var (
 	extractId, _   = regexp.Compile(`(\d+)`)
 	extractName, _ = regexp.Compile(`\d+\((\w+)\)`)
-	space, _ = regexp.Compile(`\s+`)
+	space, _       = regexp.Compile(`\s+`)
 	ParseFormatErr = errors.New("解析用户id格式错误")
 )
 

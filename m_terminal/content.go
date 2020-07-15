@@ -63,14 +63,16 @@ type content struct {
 	out       *par
 	stdout    *par
 	stderr    *par
+	stdin     *par
 	sharePool map[string]interface{}
 }
 
 func NewContent() *content {
 	return &content{
-		out: NewPar(),
-		stderr: NewPar(),
-		stdout: NewPar(),
+		out:       NewPar(),
+		stderr:    NewPar(),
+		stdout:    NewPar(),
+		stdin:     NewPar(),
 		sharePool: make(map[string]interface{}),
 	}
 }

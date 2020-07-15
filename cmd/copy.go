@@ -14,6 +14,7 @@ var (
 	mode string
 	uid  int
 	gid  int
+	copySudo bool
 )
 
 func init() {
@@ -21,6 +22,7 @@ func init() {
 	copyCmd.Flags().StringVar(&mode, "mode", "", "设置文件上传后的权限")
 	copyCmd.Flags().IntVar(&uid, "uid", -1, "设置上传后文件uid")
 	copyCmd.Flags().IntVar(&gid, "gid", -1, "设置上传后文件的gid")
+	copyCmd.Flags().BoolVarP(&copySudo, "sudo", "S", false, "可将本地文件无限制的拷贝到远端")
 }
 
 var copyCmd = cobra.Command{

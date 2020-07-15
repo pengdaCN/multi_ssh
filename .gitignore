@@ -1,0 +1,8 @@
+hosts
+test_hosts
+.idea
+vendor
+history
+multi_ssh_bata
+main_test.go
+.gitignore

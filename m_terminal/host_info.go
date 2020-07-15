@@ -24,13 +24,13 @@ func GetRemoteHostInfo(term *Terminal) {
 	}
 	term.content.sharePool[HostInfoKey] = &host_info.HostGenericInfo{
 		User: uinfo,
-		Net: ninfo,
+		Net:  ninfo,
 	}
 }
 
 var (
-	enter, _ = regexp.Compile(`\n`)
-	GetHostUserInfoErr = errors.New("获取hostUser信息错误")
+	enter, _            = regexp.Compile(`\n`)
+	GetHostUserInfoErr  = errors.New("获取hostUser信息错误")
 	GetHostUserGroupErr = errors.New("获取user id与group信息错误")
 )
 
@@ -54,8 +54,8 @@ func getRemoteHostUserInfo(term *Terminal) (*host_info.UserInfo, error) {
 		sarr[i] = strings.TrimSpace(sarr[i])
 	}
 	uinfo := host_info.UserInfo{
-		UserName: sarr[0],
-		Home: sarr[1],
+		UserName:   sarr[0],
+		Home:       sarr[1],
 		LoginShell: sarr[2],
 	}
 	uid, gid, groups, err := host_info.ParseIdAndGroup(sarr[3])
