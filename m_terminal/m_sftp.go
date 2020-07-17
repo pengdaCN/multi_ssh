@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"multi_ssh/extra_mod/host_info"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -33,6 +34,8 @@ func pathSplit(path string) []string {
 	return rst
 }
 
+// 根据终端中获取的信息，对目录进行完整性补全
+// 如 ~/.bashrc 会补全为/home/.bashrc
 func (t *Terminal) expandDir(path string) (string, bool) {
 	dirs := pathSplit(path)
 	if strings.HasPrefix(dirs[0], "~") {
@@ -47,73 +50,79 @@ func (t *Terminal) expandDir(path string) (string, bool) {
 	return filepath.Join(dirs...), true
 }
 
-//func (t *Terminal) Copy2(exists, sudo bool, srcPaths []string, remotePath string, fn handleByFile)  {
-//	paths := pathSplit(remotePath)
-//	if (! strings.HasPrefix(paths[0], "~")) || (! strings.HasPrefix(remotePath, "/tmp")) {
-//		if info, ok := t.GetContent().GetHostInfo(); ! ok {
-//			return
-//		}
-//	}
-//}
-
 //@exists 参数为true，上传的目录不存在就创建
 //@sudo 参数为true，上传放置在任何root可以方式目录
 //@fn 对上传文件设置额外操作
-func (t *Terminal) Copy(exists, sudo bool, srcPaths []string, remotePath string, fn handleByFile) error {
-	paths := pathSplit(remotePath)
-	expandPath, ok := t.expandDir(remotePath)
-	if strings.HasPrefix(paths[0], "~") || strings.HasPrefix(remotePath, "/tmp") {
-		if exists {
-			if ok {
-				_, err := t.run(false, fmt.Sprintf(`test -d %s`, expandPath))
-				if err != nil {
-					_, err = t.run(false, fmt.Sprintf(`mkdir -p %s`, expandPath))
-					if err != nil {
-						return err
-					}
-				}
-			} else {
-				return errors.New("不能对目录进行扩展")
-			}
-		}
-		err := t.SftpUpdates(srcPaths, expandPath, fn)
+func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string, fn handleByFile) error {
+	info, _ := t.GetContent().GetHostInfo()
+	expandPath, _ := t.expandDir(remotePath)
+	if exist {
+		err := exists(t, sudo, expandPath)
 		if err != nil {
 			return err
 		}
-	} else if sudo {
-		if exists {
-			if ok {
-				_, err := t.run(sudo, fmt.Sprintf(`sudo test -d %s`, expandPath))
+	}
+	if sudo {
+		if ! inRange(info, remotePath) {
+			err := t.SftpUpdates(srcPaths, "/tmp", fn)
+			if err != nil {
+				return err
+			}
+			filenames := make([]string, 0, len(srcPaths))
+			for i := 0; i < len(srcPaths); i++ {
+				filenames = append(filenames, filepath.Base(srcPaths[i]))
+			}
+			if len(filenames) < 1 {
+				_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/%s /%s`, filenames[0], expandPath))
 				if err != nil {
-					_, err := t.run(sudo, fmt.Sprintf("sudo mkdir -p %s", expandPath))
-					if err != nil {
-						return errors.New("copy 时创建目录失败")
-					}
+					return err
 				}
 			} else {
-				return errors.New("不能对目录进行扩展")
+				_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/{%s} %s`, strings.Join(filenames, ","), expandPath))
+				if err != nil {
+					return err
+				}
 			}
+			return nil
 		}
-		if t.SftpUpdates(srcPaths, "/tmp", fn) != nil {
-			return errors.New("上传文件失败")
-		}
-		filenames := make([]string, 0, len(srcPaths))
-		for i := 0; i < len(srcPaths); i++ {
-			filenames = append(filenames, path.Base(srcPaths[i]))
-		}
-		if len(filenames) > 1 {
-			_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/{%s} %s`, strings.Join(filenames, ","), expandPath))
-			if err != nil {
-				return err
-			}
-		} else {
-			_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/%s /%s`, filenames[0], expandPath))
-			if err != nil {
-				return err
-			}
+	}
+	return t.SftpUpdates(srcPaths, expandPath, fn)
+}
+
+// 保证远程目录一定存在
+func exists(term *Terminal, sudo bool, remotePath string) error {
+	var prefix string
+	if sudo {
+		prefix = "sudo"
+	}
+	_, err := term.run(sudo, fmt.Sprintf(`%s test -d %s`, prefix, remotePath))
+	if err != nil {
+		_, err := term.run(sudo, fmt.Sprintf(`%s mkdir -p %s`, prefix, remotePath))
+		if err != nil {
+			return errors.New("copy 时创建目录失败")
 		}
 	}
 	return nil
+}
+
+// 用于判断目标路径是否在远程上有写权限
+func inRange(info *host_info.HostGenericInfo, remotePath string) bool {
+	paths := pathSplit(remotePath)
+	if info != nil {
+		if info.User.IsRoot {
+			return true
+		}
+		if info.User.Home == paths[0] {
+			return true
+		}
+	}
+	if strings.HasPrefix(remotePath, "~") {
+		return true
+	}
+	if strings.HasPrefix(remotePath, "/tmp") {
+		return true
+	}
+	return false
 }
 
 func (t *Terminal) Remove(path string) error {
@@ -139,19 +148,6 @@ func (t *Terminal) SftpOpen(path string) ([]byte, error) {
 }
 
 func (t *Terminal) SftpUpdates(srcPaths []string, remotePath string, fn handleByFile) error {
-	// 对~ 表示的目录进行扩展，注意~cat, ~panda，能表示方式不会进行扩展
-	dirs := filepath.SplitList(remotePath)
-	if strings.HasPrefix(dirs[0], "~") {
-		if info, ok := t.GetContent().GetHostInfo(); ok {
-			if info.User.Home != "" {
-				dirs[0] = info.User.Home
-			}
-		} else {
-			log.Println("对~字符的扩展失败")
-			return errors.New("对~字符的扩展失败")
-		}
-	}
-	remotePath = filepath.Join(dirs...)
 	for _, s := range srcPaths {
 		err := t.SftpUpdate(s, remotePath, fn)
 		if err != nil {
