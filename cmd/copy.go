@@ -7,14 +7,14 @@ import (
 	"multi_ssh/tools"
 	"os"
 	"sync"
-	"time"
 )
 
 var (
-	mode string
-	uid  int
-	gid  int
-	copySudo bool
+	mode       string
+	uid        int
+	gid        int
+	copySudo   bool
+	copyExists bool
 )
 
 func init() {
@@ -23,6 +23,7 @@ func init() {
 	copyCmd.Flags().IntVar(&uid, "uid", -1, "设置上传后文件uid")
 	copyCmd.Flags().IntVar(&gid, "gid", -1, "设置上传后文件的gid")
 	copyCmd.Flags().BoolVarP(&copySudo, "sudo", "S", false, "可将本地文件无限制的拷贝到远端")
+	copyCmd.Flags().BoolVarP(&copyExists, "exists", "e", false, "当远程目录不存在则创建")
 }
 
 var copyCmd = cobra.Command{
@@ -33,17 +34,20 @@ var copyCmd = cobra.Command{
 		srcPaths := args[:len(args)-1]
 		dstPath := args[len(args)-1]
 		ch := make(chan *commandResult, 0)
+		var w sync.WaitGroup
+		w.Add(1)
 		go func() {
+			w.Done()
 			for m := range ch {
 				outputByFormat(outFormat, m, os.Stdout)
 			}
 		}()
-		var w sync.WaitGroup
+		var w2 sync.WaitGroup
 		for _, t := range terminals {
-			w.Add(1)
+			w2.Add(1)
 			go func(term *m_terminal.Terminal) {
-				defer w.Done()
-				err := term.SftpUpdates(srcPaths, dstPath, func(file *sftp.File) error {
+				defer w2.Done()
+				err := term.Copy(copyExists, copySudo, srcPaths, dstPath, func(file *sftp.File) error {
 					if mode != "" {
 						m, err := tools.String2FileMode(mode)
 						if err != nil {
@@ -73,8 +77,8 @@ var copyCmd = cobra.Command{
 				}
 			}(t)
 		}
-		w.Wait()
-		time.Sleep(time.Second)
+		w2.Wait()
 		close(ch)
+		w.Wait()
 	},
 }

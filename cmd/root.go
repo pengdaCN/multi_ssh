@@ -63,7 +63,7 @@ var rootCmd = cobra.Command{
 			w.Add(1)
 			go func(user model.SHHUser) {
 				defer w.Done()
-				c, err := m_terminal.GetSSHClientByPassphrase(user)
+				c, err := m_terminal.DefaultWithPassphrase(user)
 				if err != nil {
 					log.Printf("打开%s失败 %s", user.Host(), err)
 					return
@@ -76,13 +76,17 @@ var rootCmd = cobra.Command{
 				ch <- c
 			}(u)
 		}
+		var w2 sync.WaitGroup
+		w2.Add(1)
 		go func() {
+			defer w2.Done()
 			for i := range ch {
 				terminals = append(terminals, i)
 			}
 		}()
 		w.Wait()
 		close(ch)
+		w2.Wait()
 	},
 }
 

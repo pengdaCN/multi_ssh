@@ -3,6 +3,7 @@ package m_terminal
 import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"io"
 	"multi_ssh/model"
 	"time"
 )
@@ -72,6 +73,10 @@ func (t *Terminal) PostUse(fn ...HookFunc) {
 
 func (t *Terminal) pressCmd(cmd string) {
 	t.currentCmd = cmdPrefixGeneric + cmd
+}
+
+func (t *Terminal) Script(sudo bool, fil io.Reader) ([]byte, error) {
+	return nil, nil
 }
 
 func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {

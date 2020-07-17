@@ -6,3 +6,4 @@ history
 multi_ssh_bata
 main_test.go
 .gitignore
+bash_script
