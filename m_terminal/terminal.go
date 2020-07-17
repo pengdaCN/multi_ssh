@@ -1,10 +1,12 @@
 package m_terminal
 
 import (
+	"fmt"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"multi_ssh/model"
+	"multi_ssh/tools"
 	"time"
 )
 
@@ -75,8 +77,19 @@ func (t *Terminal) pressCmd(cmd string) {
 	t.currentCmd = cmdPrefixGeneric + cmd
 }
 
-func (t *Terminal) Script(sudo bool, fil io.Reader) ([]byte, error) {
-	return nil, nil
+func (t *Terminal) Script(sudo bool, fil io.Reader, args string) ([]byte, error) {
+	filename := fmt.Sprintf(`__multi_ssh__.%s.sh`, tools.RandStringBytes(10))
+	err := t.SftpUpdateByReaderWithFunc(filename, fil, `/tmp`, nil)
+	if err != nil {
+		return nil, err
+	}
+	var prefix string
+	if sudo {
+		prefix = "sudo -s "
+	}
+	rst, err := t.run(sudo, fmt.Sprintf(`%sbash %s %s`, prefix, filename, args))
+	_ = t.Remove(fmt.Sprintf(`/tmp/%s`, filename))
+	return rst, err
 }
 
 func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {

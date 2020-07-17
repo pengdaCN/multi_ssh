@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"fmt"
+	"bytes"
 	"github.com/spf13/cobra"
-	"log"
+	"io/ioutil"
 	"multi_ssh/m_terminal"
 	"os"
-	"path"
 	"sync"
-	"time"
 )
 
 var (
@@ -29,73 +27,42 @@ var scriptCmd = cobra.Command{
 	Short: "将本地脚本上传到远端并执行",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		chTerm := make(chan *m_terminal.Terminal, 0)
+		ch := make(chan *commandResult, 0)
+		var finish chan struct{}
+		if scriptSavePath == "" {
+			finish = output(ch, outFormat, os.Stdout)
+		} else {
+			fil, err := os.Create(scriptSavePath)
+			if err != nil {
+				panic(err)
+			}
+			finish = output(ch, outFormat, os.Stdout, fil)
+		}
+		scriptContext, err := ioutil.ReadFile(args[0])
+		if err != nil {
+			panic(err)
+		}
 		var w sync.WaitGroup
-		go func() {
-			for _, t := range terminals {
-				w.Add(1)
-				go func(term *m_terminal.Terminal) {
-					defer w.Done()
-					err := term.SftpUpdate(args[0], "/tmp", nil)
-					if err != nil {
-						log.Println("脚本上传失败", err)
-						return
+		for _, v := range terminals {
+			w.Add(1)
+			go func(term *m_terminal.Terminal) {
+				defer w.Done()
+				rst, err := term.Script(copySudo, bytes.NewReader(scriptContext), scriptArgs)
+				if err == nil {
+					ch <- &commandResult{
+						u:   term.GetUser(),
+						msg: rst,
 					}
-					chTerm <- term
-				}(t)
-			}
-		}()
-		var w2 sync.WaitGroup
-		chRst := make(chan *commandResult, 0)
-		go func() {
-			var f *os.File
-			if scriptSavePath != "" {
-				var err error
-				f, err = os.Create(saveFile)
-				defer func() {
-					_ = f.Close()
-				}()
-				if err != nil {
-					log.Println("创建文件失败", err.Error())
-					panic(err)
+				} else {
+					ch <- &commandResult{
+						u:   term.GetUser(),
+						msg: []byte(err.Error()),
+					}
 				}
-			}
-			for r := range chRst {
-				outputByFormat(outFormat, r, f, os.Stdout)
-			}
-		}()
-		go func() {
-			for t := range chTerm {
-				w2.Add(1)
-				go func(term *m_terminal.Terminal) {
-					defer w2.Done()
-					var cmd string
-					if scriptSudo {
-						cmd = fmt.Sprintf("sudo bash /tmp/%s %s", path.Base(args[0]), scriptArgs)
-					} else {
-						cmd = fmt.Sprintf("bash /tmp/%s %s", path.Base(args[0]), scriptArgs)
-					}
-					bs, err := term.Run(scriptSudo, cmd)
-					if err == nil {
-						chRst <- &commandResult{
-							u:   term.GetUser(),
-							msg: bs,
-						}
-					} else {
-						chRst <- &commandResult{
-							u:   term.GetUser(),
-							msg: []byte(err.Error()),
-						}
-					}
-					_ = term.Remove(path.Join("/", "tmp", path.Base(args[0])))
-				}(t)
-			}
-		}()
+			}(v)
+		}
 		w.Wait()
-		time.Sleep(time.Second)
-		close(chTerm)
-		w2.Wait()
-		time.Sleep(time.Second)
-		close(chRst)
+		close(ch)
+		<-finish
 	},
 }

@@ -63,7 +63,7 @@ func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string, 
 		}
 	}
 	if sudo {
-		if ! inRange(info, remotePath) {
+		if !inRange(info, remotePath) {
 			err := t.SftpUpdates(srcPaths, "/tmp", fn)
 			if err != nil {
 				return err

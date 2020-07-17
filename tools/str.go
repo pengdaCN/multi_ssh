@@ -1,9 +1,15 @@
 package tools
 
 import (
+	"math/rand"
 	"reflect"
+	"time"
 	"unsafe"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func ByteSlice2String(b []byte) string {
 	slice := (*reflect.SliceHeader)(unsafe.Pointer(&b))
@@ -22,4 +28,14 @@ func String2ByteSlice(s string) []byte {
 		Cap:  str.Len,
 	}
 	return *(*[]byte)(unsafe.Pointer(&slice))
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
