@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"github.com/spf13/cobra"
+	"io"
 	"io/ioutil"
 	"multi_ssh/m_terminal"
 	"os"
@@ -12,14 +13,14 @@ import (
 var (
 	scriptSudo     bool
 	scriptArgs     string
-	scriptSavePath string
+	scriptSaveFile string
 )
 
 func init() {
 	rootCmd.AddCommand(&scriptCmd)
 	scriptCmd.Flags().BoolVar(&scriptSudo, "sudo", false, "是否以sudo方式执行脚本")
 	scriptCmd.Flags().StringVar(&scriptArgs, "args", "", "添加脚本执行的参数")
-	scriptCmd.Flags().StringVar(&scriptSavePath, "save", "", "将脚本输出保存到文件中")
+	scriptCmd.Flags().StringVar(&scriptSaveFile, "save", "", "将脚本输出保存到文件中")
 }
 
 var scriptCmd = cobra.Command{
@@ -28,16 +29,17 @@ var scriptCmd = cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ch := make(chan *commandResult, 0)
-		var finish chan struct{}
-		if scriptSavePath == "" {
-			finish = output(ch, outFormat, os.Stdout)
-		} else {
-			fil, err := os.Create(scriptSavePath)
+		out := []io.Writer{
+			os.Stdout,
+		}
+		if scriptSaveFile != "" {
+			fil, err := os.Open(scriptSaveFile)
 			if err != nil {
 				panic(err)
 			}
-			finish = output(ch, outFormat, os.Stdout, fil)
+			out = append(out, fil)
 		}
+		finish := output(ch, outFormat, out...)
 		scriptContext, err := ioutil.ReadFile(args[0])
 		if err != nil {
 			panic(err)

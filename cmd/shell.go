@@ -2,29 +2,22 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"log"
+	"io"
 	"multi_ssh/m_terminal"
-	"multi_ssh/model"
 	"os"
 	"sync"
-	"time"
 )
 
 func init() {
 	shellCmd.Flags().BoolVar(&enableSudo, "sudo", false, "设置是否以sudo方式执行命令")
-	shellCmd.Flags().StringVar(&saveFile, "save", "", "将shell命令执行的输出保存到本地的文件中")
+	shellCmd.Flags().StringVar(&shellSaveFile, "save", "", "将shell命令执行的输出保存到本地的文件中")
 	rootCmd.AddCommand(&shellCmd)
 }
 
 var (
-	enableSudo bool
-	saveFile   string
+	enableSudo    bool
+	shellSaveFile string
 )
-
-type commandResult struct {
-	u   model.SHHUser
-	msg []byte
-}
 
 var shellCmd = cobra.Command{
 	Use:     "shell command",
@@ -33,23 +26,17 @@ var shellCmd = cobra.Command{
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ch := make(chan *commandResult, 0)
-		go func() {
-			var f *os.File
-			if saveFile != "" {
-				var err error
-				f, err = os.Create(saveFile)
-				defer func() {
-					_ = f.Close()
-				}()
-				if err != nil {
-					log.Println("创建文件失败", err.Error())
-					panic(err)
-				}
+		out := []io.Writer{
+			os.Stdout,
+		}
+		if shellSaveFile != "" {
+			fil, err := os.Open(scriptSaveFile)
+			if err != nil {
+				panic(err)
 			}
-			for r := range ch {
-				outputByFormat(outFormat, r, os.Stdout, f)
-			}
-		}()
+			out = append(out, fil)
+		}
+		finish := output(ch, outFormat, out...)
 		var w sync.WaitGroup
 		for _, t := range terminals {
 			w.Add(1)
@@ -70,7 +57,7 @@ var shellCmd = cobra.Command{
 			}(t)
 		}
 		w.Wait()
-		time.Sleep(time.Second)
 		close(ch)
+		<-finish
 	},
 }

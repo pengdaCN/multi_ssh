@@ -34,19 +34,12 @@ var copyCmd = cobra.Command{
 		srcPaths := args[:len(args)-1]
 		dstPath := args[len(args)-1]
 		ch := make(chan *commandResult, 0)
+		finish := output(ch, outFormat, os.Stdout)
 		var w sync.WaitGroup
-		w.Add(1)
-		go func() {
-			w.Done()
-			for m := range ch {
-				outputByFormat(outFormat, m, os.Stdout)
-			}
-		}()
-		var w2 sync.WaitGroup
 		for _, t := range terminals {
-			w2.Add(1)
+			w.Add(1)
 			go func(term *m_terminal.Terminal) {
-				defer w2.Done()
+				defer w.Done()
 				err := term.Copy(copyExists, copySudo, srcPaths, dstPath, func(file *sftp.File) error {
 					if mode != "" {
 						m, err := tools.String2FileMode(mode)
@@ -77,8 +70,8 @@ var copyCmd = cobra.Command{
 				}
 			}(t)
 		}
-		w2.Wait()
-		close(ch)
 		w.Wait()
+		close(ch)
+		<-finish
 	},
 }
