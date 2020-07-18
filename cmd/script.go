@@ -28,12 +28,12 @@ var scriptCmd = cobra.Command{
 	Short: "将本地脚本上传到远端并执行",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		ch := make(chan *commandResult, 0)
+		ch := make(chan *execResult, 0)
 		out := []io.Writer{
 			os.Stdout,
 		}
 		if scriptSaveFile != "" {
-			fil, err := os.Open(scriptSaveFile)
+			fil, err := os.Create(scriptSaveFile)
 			if err != nil {
 				panic(err)
 			}
@@ -50,17 +50,7 @@ var scriptCmd = cobra.Command{
 			go func(term *m_terminal.Terminal) {
 				defer w.Done()
 				rst, err := term.Script(copySudo, bytes.NewReader(scriptContext), scriptArgs)
-				if err == nil {
-					ch <- &commandResult{
-						u:   term.GetUser(),
-						msg: rst,
-					}
-				} else {
-					ch <- &commandResult{
-						u:   term.GetUser(),
-						msg: []byte(err.Error()),
-					}
-				}
+				ch <- buildExecResult(term, rst, err)
 			}(v)
 		}
 		w.Wait()

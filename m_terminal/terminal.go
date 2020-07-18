@@ -87,7 +87,7 @@ func (t *Terminal) Script(sudo bool, fil io.Reader, args string) ([]byte, error)
 	if sudo {
 		prefix = "sudo -s "
 	}
-	rst, err := t.run(sudo, fmt.Sprintf(`%sbash %s %s`, prefix, filename, args))
+	rst, err := t.run(sudo, fmt.Sprintf(`%sbash /tmp/%s %s`, prefix, filename, args))
 	_ = t.Remove(fmt.Sprintf(`/tmp/%s`, filename))
 	return rst, err
 }

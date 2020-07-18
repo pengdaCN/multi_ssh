@@ -33,7 +33,7 @@ var copyCmd = cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		srcPaths := args[:len(args)-1]
 		dstPath := args[len(args)-1]
-		ch := make(chan *commandResult, 0)
+		ch := make(chan *execResult, 0)
 		finish := output(ch, outFormat, os.Stdout)
 		var w sync.WaitGroup
 		for _, t := range terminals {
@@ -57,17 +57,7 @@ var copyCmd = cobra.Command{
 					}
 					return nil
 				})
-				if err != nil {
-					ch <- &commandResult{
-						u:   term.GetUser(),
-						msg: []byte(err.Error()),
-					}
-				} else {
-					ch <- &commandResult{
-						u:   term.GetUser(),
-						msg: []byte("OK"),
-					}
-				}
+				ch <- buildExecResultByErr(term, err)
 			}(t)
 		}
 		w.Wait()

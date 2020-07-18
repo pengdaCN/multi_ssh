@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"golang.org/x/crypto/ssh"
 	"io"
 	"log"
+	"multi_ssh/m_terminal"
 	"multi_ssh/model"
 	"multi_ssh/tools"
 	"reflect"
@@ -15,40 +17,58 @@ const defaultOutputFormat = "#{user}@#{host}: {#{msg}}\n"
 
 var printf reflect.Value
 
-type outAttribute func(*commandResult) string
+type outAttribute func(*execResult) string
 
 var outFunc map[string]outAttribute
 
-type commandResult struct {
-	u   model.SHHUser
-	msg []byte
+type execResult struct {
+	u       model.SHHUser
+	msg     []byte
+	errInfo string
+	code    int
+}
+
+func buildExecResult(term *m_terminal.Terminal, rst []byte, err error) *execResult {
+	r := new(execResult)
+	r.u = term.GetUser()
+	r.msg = rst
+	if err != nil {
+		r.errInfo = err.Error()
+	}
+	if exit, ok := err.(*ssh.ExitError); ok {
+		r.code = exit.ExitStatus()
+	}
+	return r
+}
+
+func buildExecResultByErr(term *m_terminal.Terminal, err error) *execResult {
+	r := buildExecResult(term, nil, err)
+	if err == nil {
+		r.msg = []byte("OK")
+	} else {
+		r.msg = []byte(r.errInfo)
+	}
+	return r
 }
 
 func init() {
 	outFunc = make(map[string]outAttribute)
 	printf = reflect.ValueOf(fmt.Sprintf)
-	outRegistry("user", func(result *commandResult) string {
+	outRegistry("user", func(result *execResult) string {
 		return result.u.User()
 	})
-	outRegistry("host", func(result *commandResult) string {
+	outRegistry("host", func(result *execResult) string {
 		return result.u.Host()
 	})
-	outRegistry("msg", func(result *commandResult) string {
+	outRegistry("msg", func(result *execResult) string {
 		return tools.ByteSlice2String(result.msg)
 	})
-}
-
-func outputByFormat(format string, result *commandResult, out ...io.Writer) {
-	rst := fmt.Sprintf(format, result.u.User(), result.u.Host(), string(result.msg))
-	for _, o := range out {
-		if o == nil {
-			continue
-		}
-		_, err := o.Write([]byte(rst))
-		if err != nil {
-			log.Println(err)
-		}
-	}
+	outRegistry("err", func(result *execResult) string {
+		return result.errInfo
+	})
+	outRegistry("code", func(result *execResult) string {
+		return string(result.code)
+	})
 }
 
 func outRegistry(key string, val outAttribute) {
@@ -97,10 +117,10 @@ func formatParse(format string) (f string, in []outAttribute) {
 	return _format.String(), in
 }
 
-func output(in <-chan *commandResult, format string, writer ...io.Writer) chan struct{} {
+func output(in <-chan *execResult, format string, writer ...io.Writer) chan struct{} {
 	finish := make(chan struct{}, 0)
 	f, funcs := formatParse(format)
-	args := make([]reflect.Value, 0, len(funcs)+1)
+	args := make([]reflect.Value, len(funcs)+1)
 	args[0] = reflect.ValueOf(f)
 	go func() {
 		defer func() {

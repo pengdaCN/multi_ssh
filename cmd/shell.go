@@ -25,12 +25,12 @@ var shellCmd = cobra.Command{
 	Example: "shell --sudo true 'command'",
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		ch := make(chan *commandResult, 0)
+		ch := make(chan *execResult, 0)
 		out := []io.Writer{
 			os.Stdout,
 		}
 		if shellSaveFile != "" {
-			fil, err := os.Open(scriptSaveFile)
+			fil, err := os.Create(scriptSaveFile)
 			if err != nil {
 				panic(err)
 			}
@@ -43,17 +43,7 @@ var shellCmd = cobra.Command{
 			go func(term *m_terminal.Terminal) {
 				defer w.Done()
 				bs, err := term.Run(enableSudo, args[0])
-				if err == nil {
-					ch <- &commandResult{
-						u:   term.GetUser(),
-						msg: bs,
-					}
-				} else {
-					ch <- &commandResult{
-						u:   term.GetUser(),
-						msg: []byte(err.Error()),
-					}
-				}
+				ch <- buildExecResult(term, bs, err)
 			}(t)
 		}
 		w.Wait()
