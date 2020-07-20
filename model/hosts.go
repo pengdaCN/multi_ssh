@@ -6,8 +6,3 @@ type RemoteHostInfo struct {
 	Host       string
 	Alias      string
 }
-
-//func LoadHost(str string) (*RemoteHostInfo, error) {
-//	s := strings.TrimSpace(str)
-//	piece := separate.Split(str, -1)
-//}

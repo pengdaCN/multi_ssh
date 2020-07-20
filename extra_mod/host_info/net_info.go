@@ -62,24 +62,36 @@ func (n *NetInterInfo) Active() bool {
 	return true
 }
 
-func (n *NetInterInfo) Ipv4ReturnOne() string {
-	var ipv4Str string
+func (n *NetInterInfo) Ipv4() *net.IPNet {
 	for _, i := range n.Ip {
 		if ip := i.IP.To4(); ip != nil {
-			ipv4Str = ip.String()
-			break
+			return &i
 		}
+	}
+	return nil
+}
+
+func (n *NetInterInfo) Ipv4Str() string {
+	var ipv4Str string
+	if i := n.Ipv4(); i != nil {
+		ipv4Str = i.String()
 	}
 	return ipv4Str
 }
 
-func (n *NetInterInfo) Ipv6ReturnOne() string {
-	var ipv6Str string
+func (n *NetInterInfo) Ipv6() *net.IPNet {
 	for _, i := range n.Ip {
 		if ip := i.IP.To16(); ip != nil {
-			ipv6Str = ip.String()
-			break
+			return &i
 		}
+	}
+	return nil
+}
+
+func (n *NetInterInfo) Ipv6Str() string {
+	var ipv6Str string
+	if i := n.Ipv6(); i != nil {
+		ipv6Str = i.String()
 	}
 	return ipv6Str
 }
