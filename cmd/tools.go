@@ -28,6 +28,27 @@ type execResult struct {
 	code    int
 }
 
+type eachFunc func(term *m_terminal.Terminal)
+
+func eachTerm(terms []*m_terminal.Terminal, fn eachFunc) chan struct{} {
+	finish := make(chan struct{}, 0)
+	go func() {
+		defer func() {
+			finish <- struct{}{}
+		}()
+		var w sync.WaitGroup
+		for i := 0; i < len(terms); i++ {
+			w.Add(1)
+			go func(term *m_terminal.Terminal) {
+				defer w.Done()
+				fn(term)
+			}(terms[i])
+		}
+		w.Wait()
+	}()
+	return finish
+}
+
 func buildExecResult(term *m_terminal.Terminal, rst []byte, err error) *execResult {
 	r := new(execResult)
 	r.u = term.GetUser()
@@ -119,8 +140,8 @@ func formatParse(format string) (f string, in []outAttribute) {
 
 func output(in <-chan *execResult, format string, writer ...io.Writer) chan struct{} {
 	finish := make(chan struct{}, 0)
-	f, funcs := formatParse(format)
-	args := make([]reflect.Value, len(funcs)+1)
+	f, fns := formatParse(format)
+	args := make([]reflect.Value, len(fns)+1)
 	args[0] = reflect.ValueOf(f)
 	go func() {
 		defer func() {
@@ -132,7 +153,7 @@ func output(in <-chan *execResult, format string, writer ...io.Writer) chan stru
 			w.Add(1)
 			var str string
 			{
-				for i, fn := range funcs {
+				for i, fn := range fns {
 					args[i+1] = reflect.ValueOf(fn(v))
 				}
 				t := printf.Call(args)

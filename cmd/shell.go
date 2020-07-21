@@ -5,24 +5,23 @@ import (
 	"io"
 	"multi_ssh/m_terminal"
 	"os"
-	"sync"
 )
 
 func init() {
-	shellCmd.Flags().BoolVar(&enableSudo, "sudo", false, "设置是否以sudo方式执行命令")
+	shellCmd.Flags().BoolVar(&shellSudo, "sudo", false, "设置是否以sudo方式执行命令")
 	shellCmd.Flags().StringVar(&shellSaveFile, "save", "", "将shell命令执行的输出保存到本地的文件中")
 	rootCmd.AddCommand(&shellCmd)
 }
 
 var (
-	enableSudo    bool
+	shellSudo     bool
 	shellSaveFile string
 )
 
 var shellCmd = cobra.Command{
 	Use:     "shell command",
 	Short:   "执行一行shell命令",
-	Example: "shell --sudo true 'command'",
+	Example: "shell --sudo 'command'",
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ch := make(chan *execResult, 0)
@@ -36,18 +35,13 @@ var shellCmd = cobra.Command{
 			}
 			out = append(out, fil)
 		}
-		finish := output(ch, outFormat, out...)
-		var w sync.WaitGroup
-		for _, t := range terminals {
-			w.Add(1)
-			go func(term *m_terminal.Terminal) {
-				defer w.Done()
-				bs, err := term.Run(enableSudo, args[0])
-				ch <- buildExecResult(term, bs, err)
-			}(t)
-		}
-		w.Wait()
+		outFinish := output(ch, outFormat, out...)
+		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
+			rst, err := term.Run(shellSudo, args[0])
+			ch <- buildExecResult(term, rst, err)
+		})
+		<-execFinish
 		close(ch)
-		<-finish
+		<-outFinish
 	},
 }

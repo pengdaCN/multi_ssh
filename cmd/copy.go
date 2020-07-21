@@ -6,7 +6,6 @@ import (
 	"multi_ssh/m_terminal"
 	"multi_ssh/tools"
 	"os"
-	"sync"
 )
 
 var (
@@ -34,34 +33,29 @@ var copyCmd = cobra.Command{
 		srcPaths := args[:len(args)-1]
 		dstPath := args[len(args)-1]
 		ch := make(chan *execResult, 0)
-		finish := output(ch, outFormat, os.Stdout)
-		var w sync.WaitGroup
-		for _, t := range terminals {
-			w.Add(1)
-			go func(term *m_terminal.Terminal) {
-				defer w.Done()
-				err := term.Copy(copyExists, copySudo, srcPaths, dstPath, func(file *sftp.File) error {
-					if mode != "" {
-						m, err := tools.String2FileMode(mode)
-						if err != nil {
-							return err
-						}
-						if err := file.Chmod(m); err != nil {
-							return err
-						}
+		outFinish := output(ch, outFormat, os.Stdout)
+		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
+			err := term.Copy(copyExists, copySudo, srcPaths, dstPath, func(file *sftp.File) error {
+				if mode != "" {
+					m, err := tools.String2FileMode(mode)
+					if err != nil {
+						return err
 					}
-					if uid != -1 && gid != -1 {
-						if err := file.Chown(uid, gid); err != nil {
-							return err
-						}
+					if err := file.Chmod(m); err != nil {
+						return err
 					}
-					return nil
-				})
-				ch <- buildExecResultByErr(term, err)
-			}(t)
-		}
-		w.Wait()
+				}
+				if uid != -1 && gid != -1 {
+					if err := file.Chown(uid, gid); err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+			ch <- buildExecResultByErr(term, err)
+		})
+		<-execFinish
 		close(ch)
-		<-finish
+		<-outFinish
 	},
 }

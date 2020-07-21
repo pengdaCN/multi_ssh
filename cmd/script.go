@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"multi_ssh/m_terminal"
 	"os"
-	"sync"
 )
 
 var (
@@ -18,7 +17,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(&scriptCmd)
-	scriptCmd.Flags().BoolVar(&scriptSudo, "sudo", false, "是否以sudo方式执行脚本")
+	scriptCmd.Flags().BoolVarP(&scriptSudo, "sudo", "S", false, "是否以sudo方式执行脚本")
 	scriptCmd.Flags().StringVar(&scriptArgs, "args", "", "添加脚本执行的参数")
 	scriptCmd.Flags().StringVar(&scriptSaveFile, "save", "", "将脚本输出保存到文件中")
 }
@@ -39,22 +38,17 @@ var scriptCmd = cobra.Command{
 			}
 			out = append(out, fil)
 		}
-		finish := output(ch, outFormat, out...)
+		outFinish := output(ch, outFormat, out...)
 		scriptContext, err := ioutil.ReadFile(args[0])
 		if err != nil {
 			panic(err)
 		}
-		var w sync.WaitGroup
-		for _, v := range terminals {
-			w.Add(1)
-			go func(term *m_terminal.Terminal) {
-				defer w.Done()
-				rst, err := term.Script(copySudo, bytes.NewReader(scriptContext), scriptArgs)
-				ch <- buildExecResult(term, rst, err)
-			}(v)
-		}
-		w.Wait()
+		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
+			rst, err := term.Script(scriptSudo, bytes.NewReader(scriptContext), scriptArgs)
+			ch <- buildExecResult(term, rst, err)
+		})
+		<-execFinish
 		close(ch)
-		<-finish
+		<-outFinish
 	},
 }
