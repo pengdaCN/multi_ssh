@@ -8,7 +8,10 @@ import (
 	"multi_ssh/model"
 	"os"
 	"sync"
+	"time"
 )
+
+const version = `0.1`
 
 var (
 	hosts     string
@@ -20,6 +23,7 @@ var (
 var (
 	terminals []*m_terminal.Terminal
 	users     []model.SHHUser
+	timeout   time.Duration
 )
 
 func init() {
@@ -27,12 +31,14 @@ func init() {
 	rootCmd.Flags().StringVarP(&hostLine, "line", "", "", "从cli中读取要连接的信息")
 	rootCmd.Flags().StringVarP(&outFormat, "format", "f", defaultOutputFormat, "以指定格式输出信息")
 	rootCmd.Flags().BoolVarP(&preInfo, "uinfo", "", true, "是否在对主机操作之前获取他的信息")
+	rootCmd.Flags().DurationVarP(&timeout, "wait", "w", -1, "设置超时，默认不永不超时")
 }
 
 var rootCmd = cobra.Command{
 	Use:              "multi_ssh",
 	Short:            "这是一个简单的cli工具",
 	Long:             "这是一个简单的cli的并发ssh client工具",
+	Version:          version,
 	TraverseChildren: true,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 0 {
@@ -89,6 +95,8 @@ var rootCmd = cobra.Command{
 		w2.Wait()
 	},
 }
+
+var Root = &rootCmd
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {

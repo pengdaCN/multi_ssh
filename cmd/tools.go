@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
 
 const defaultOutputFormat = "#{user}@#{host}: {#{msg}}\n"
@@ -41,7 +42,23 @@ func eachTerm(terms []*m_terminal.Terminal, fn eachFunc) chan struct{} {
 			w.Add(1)
 			go func(term *m_terminal.Terminal) {
 				defer w.Done()
-				fn(term)
+				ch := make(chan struct{}, 0)
+				go func() {
+					fn(term)
+					ch <- struct{}{}
+				}()
+				// 当时timeout 等于-1是则用不超时
+				if timeout == -1 {
+					<-ch
+					return
+				}
+				// 设置任务超时
+				select {
+				case <-ch:
+				case <-time.After(timeout):
+					log.Println("任务执行超时")
+					return
+				}
 			}(terms[i])
 		}
 		w.Wait()
@@ -141,6 +158,9 @@ func formatParse(format string) (f string, in []outAttribute) {
 func output(in <-chan *execResult, format string, writer ...io.Writer) chan struct{} {
 	finish := make(chan struct{}, 0)
 	f, fns := formatParse(format)
+	{
+		f = tools.SpecialStrTransform(f)
+	}
 	args := make([]reflect.Value, len(fns)+1)
 	args[0] = reflect.ValueOf(f)
 	go func() {

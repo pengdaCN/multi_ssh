@@ -1,15 +1,19 @@
 package m_terminal
 
 import (
+	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"log"
+	"multi_ssh/model"
+	"strings"
 )
 
 type TermSession struct {
 	*ssh.Session
 	TermStdin io.WriteCloser
 	rst       []byte
+	uinfo     model.SHHUser
 }
 
 func (t *Terminal) NewSession() (*TermSession, error) {
@@ -25,10 +29,11 @@ func (t *Terminal) NewSession() (*TermSession, error) {
 	}
 	ts.Stdout = make(out, 0)
 	ts.Stderr = make(out, 0)
+	ts.uinfo = t.user
 	return ts, nil
 }
 
-func (s *TermSession) Run(term *Terminal, enableSudo bool, cmd string) error {
+func (s *TermSession) Run(enableSudo bool, cmd string) error {
 	defer func() {
 		_ = s.Session.Close()
 	}()
@@ -51,10 +56,9 @@ func (s *TermSession) Run(term *Terminal, enableSudo bool, cmd string) error {
 					stdout = nil
 					continue
 				}
-				_, _ = term.content.stdout.Write(o)
 				s.rst = append(s.rst, o...)
 				if enableSudo {
-					if err := sudo(term, o, s.TermStdin); err != nil {
+					if err := sudo(s.uinfo, o, s.TermStdin); err != nil {
 						log.Println("sudo执行错误", err)
 						break
 					}
@@ -64,10 +68,24 @@ func (s *TermSession) Run(term *Terminal, enableSudo bool, cmd string) error {
 					stderr = nil
 					continue
 				}
-				_, _ = term.content.stderr.Write(o2)
 				s.rst = append(s.rst, o2...)
 			}
 		}
 	}()
 	return s.Session.Run(cmd)
+}
+
+const sudoPrefix = "[sudo] password for %s: "
+
+func sudo(u model.SHHUser, in []byte, out io.Writer) error {
+	line := string(in)
+	beenMatched := fmt.Sprintf(sudoPrefix, u.User())
+	if strings.Contains(beenMatched, line) {
+		u, _ := u.(*model.SSHUserByPassphrase)
+		_, err := out.Write([]byte(u.Password + "\n"))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

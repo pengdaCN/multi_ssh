@@ -87,7 +87,7 @@ func (t *Terminal) Script(sudo bool, fil io.Reader, args string) ([]byte, error)
 	if sudo {
 		prefix = "sudo -s "
 	}
-	rst, err := t.run(sudo, fmt.Sprintf(`%sbash /tmp/%s %s`, prefix, filename, args))
+	rst, err := t.Run(sudo, fmt.Sprintf(`%sbash /tmp/%s %s`, prefix, filename, args))
 	_ = t.Remove(fmt.Sprintf(`/tmp/%s`, filename))
 	return rst, err
 }
@@ -112,7 +112,7 @@ func (t *Terminal) run(sudo bool, cmd string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = session.Run(t, sudo, cmd)
+	err = session.Run(sudo, cmd)
 	return session.rst, err
 }
 

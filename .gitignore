@@ -3,7 +3,7 @@ test_hosts
 .idea
 vendor
 history
-multi_ssh_bata
+multi_ssh_*
 main_test.go
 .gitignore
 bash_script
