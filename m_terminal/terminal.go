@@ -93,6 +93,10 @@ func (t *Terminal) Script(sudo bool, fil io.Reader, args string) ([]byte, error)
 }
 
 func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {
+	defer func() {
+		t.preIndex = 0
+		t.postIndex = 0
+	}()
 	t.currentRawCmd = cmd
 	for ; t.preIndex < uint8(len(t.preHook)); t.preIndex++ {
 		t.preHook[t.preIndex](t)

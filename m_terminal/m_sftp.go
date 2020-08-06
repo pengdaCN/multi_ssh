@@ -53,7 +53,7 @@ func (t *Terminal) expandDir(path string) (string, bool) {
 //@exists 参数为true，上传的目录不存在就创建
 //@sudo 参数为true，上传放置在任何root可以方式目录
 //@fn 对上传文件设置额外操作
-func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string, fn handleByFile) error {
+func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string, fn HandleByFile) error {
 	info, _ := t.GetContent().GetHostInfo()
 	expandPath, _ := t.expandDir(remotePath)
 	if exist {
@@ -129,7 +129,7 @@ func (t *Terminal) Remove(path string) error {
 	return t.sftpClient.Remove(path)
 }
 
-type handleByFile func(*sftp.File) error
+type HandleByFile func(*sftp.File) error
 
 func (t *Terminal) GetSftpClient() (*sftp.Client, error) {
 	return sftp.NewClient(t.client)
@@ -147,7 +147,7 @@ func (t *Terminal) SftpOpen(path string) ([]byte, error) {
 	return ioutil.ReadAll(b)
 }
 
-func (t *Terminal) SftpUpdates(srcPaths []string, remotePath string, fn handleByFile) error {
+func (t *Terminal) SftpUpdates(srcPaths []string, remotePath string, fn HandleByFile) error {
 	for _, s := range srcPaths {
 		err := t.SftpUpdate(s, remotePath, fn)
 		if err != nil {
@@ -157,7 +157,7 @@ func (t *Terminal) SftpUpdates(srcPaths []string, remotePath string, fn handleBy
 	return nil
 }
 
-func (t *Terminal) SftpUpdate(_path, remotePath string, fn handleByFile) error {
+func (t *Terminal) SftpUpdate(_path, remotePath string, fn HandleByFile) error {
 	b, err := ioutil.ReadFile(_path)
 	if err != nil {
 		panic(err)
@@ -167,7 +167,7 @@ func (t *Terminal) SftpUpdate(_path, remotePath string, fn handleByFile) error {
 	return t.SftpUpdateByReaderWithFunc(filename, rd, remotePath, fn)
 }
 
-func (t *Terminal) SftpUpdateByReaderWithFunc(filename string, reader io.Reader, remotePath string, fn handleByFile) error {
+func (t *Terminal) SftpUpdateByReaderWithFunc(filename string, reader io.Reader, remotePath string, fn HandleByFile) error {
 	t.sftpReady()
 	f, err := t.sftpClient.Create(path.Join(remotePath, filename))
 	defer func() {

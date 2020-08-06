@@ -53,6 +53,8 @@ script：将本地文件在远端上执行，更多可以通过help获取帮助
 
 copy：将本地文件拷贝到远端，可使用`~`方式代表当前登录用户的家目录，更多可以通过help获取帮助
 
+palybook：将lua脚本执行并运行
+
 ​	**选项：**
 
 ​	--sudo：将需要拷贝的文件放在被操作主机的任意位置
@@ -69,3 +71,76 @@ multi_ssh --hosts hosts.txt shell --sudo 'sudo shutdown now'
 # 从命令行中出入一条主机信息进行操作
 multi_ssh --line 'panda, 123456, local.panda.org:22' shell 'you-get --version'
 ```
+
+#### playbook介绍与使用
+
+该功能通过gopher-lua库提供的lua虚拟机以及api实现
+
+playbook模块目前提供3个由golang包装的函数，用于调用m_terminal包提供的方法
+
+1. shell函数
+
+   ```lua
+   -- 函数头如下
+   shell(id int, sudo bool, cmd string) out -> playbookResult
+   --[[
+   该函数需要传递3个参数，id参数用于确定需要执行的主机，sudo参数用于确定是否以sudo方式执行，cmd参数及真正要执行的命令，主要，在multi_ssh提供的公开执行一条命令的方式中，都在将命令进行预先的处理，使其在英语语系下执行
+   ]]
+   -- 调试示例如下
+   local tab = shell(id, false, 'whoami')
+   --[[
+   其中tab是shell函数返回的table类型，在lua中，由于默认是glabol的，所有建议所有的值都设置为local
+   ]]
+   
+   --[[
+   关于golang包装函数返回table
+   所有有glang包装的函数，如有返回值，table类型键值都是如下
+   ]]
+   tab = {
+       u={ -- u键表示用户信息
+           user='登录用户名',
+           host='登录主机名',
+       }
+       msg='命令执行输出的结果，有stdout和stderr',
+       errInfo='如命令执行失败，在golang中对错误的描述字符串',
+       code='int 类型，是执行命令完后的状态码'
+   }
+   ```
+
+2. copy函数
+
+   ```lua
+   -- copy函数头如下
+   copy(id int, sudo, exists bool, src []string, dst string, attr map<lua table>) out -> playbookResult
+   --[[
+   id参数与shell一样，sudo参数可上传到服务器任意位置，exists文件夹不存在就创建，src，需要拷贝的一些文件，必须用数组，dst上传的目标位置，attr，需要设置的上传后的文件属性
+   ]]
+   -- 调用示例
+   local = copy(id, false, false, {'/tmp/data.txt'}, '~', nil)
+   -- 注意，目前copy函数的属性设置功能还没实现
+   ```
+
+3. script函数
+
+   ```lua
+   -- script函数头如下
+   script(id int, sudo bool, script_path string, args string) out -> playbookResult
+   --[[
+   id参数与shell一样，sudo参数以sudo方式执行，script_path参数本地执行脚本的位置，args参数，脚本的参数
+   ]]
+   -- 调用示例
+   local = script(id, false, '/tmp/1.sh', '')
+   ```
+
+关于需要执行的lua脚本说明
+
+有multi_ssh执行的lua脚本，必须有一个exec函数，multi_ssh会自动调用exec函数，同事，exec函数头必须如下所示
+
+```lua
+-- exec函数头
+function exec(id)
+   shell(false, 'echo hello world') 
+end
+```
+
+exec方法的id有multi_ssh调用时自动传入
