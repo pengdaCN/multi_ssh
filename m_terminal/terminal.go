@@ -26,6 +26,7 @@ var (
 type HookFunc func(*Terminal)
 
 type Terminal struct {
+	id            int
 	user          model.SHHUser
 	client        *ssh.Client
 	sftpClient    *sftp.Client
@@ -59,6 +60,7 @@ func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
 		return nil, err
 	}
 	return &Terminal{
+		id:      tools.GetID(),
 		user:    user,
 		client:  client,
 		content: NewContent(),
@@ -78,7 +80,7 @@ func (t *Terminal) pressCmd(cmd string) {
 }
 
 func (t *Terminal) Script(sudo bool, fil io.Reader, args string) ([]byte, error) {
-	filename := fmt.Sprintf(`__multi_ssh__.%s.sh`, tools.RandStringBytes(10))
+	filename := fmt.Sprintf(`__multi_ssh__.%s.sh`, tools.GenerateRandomStr(10))
 	err := t.SftpUpdateByReaderWithFunc(filename, fil, `/tmp`, nil)
 	if err != nil {
 		return nil, err
@@ -90,6 +92,10 @@ func (t *Terminal) Script(sudo bool, fil io.Reader, args string) ([]byte, error)
 	rst, err := t.Run(sudo, fmt.Sprintf(`%sbash /tmp/%s %s`, prefix, filename, args))
 	_ = t.Remove(fmt.Sprintf(`/tmp/%s`, filename))
 	return rst, err
+}
+
+func (t *Terminal) GetID() int {
+	return t.id
 }
 
 func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {

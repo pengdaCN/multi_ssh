@@ -2,7 +2,6 @@ package playbook
 
 import (
 	lua "github.com/yuin/gopher-lua"
-	"multi_ssh/m_terminal"
 )
 
 var (
@@ -14,5 +13,4 @@ func init() {
 	VM.Register("shell", shell)
 	VM.Register("script", script)
 	VM.Register("copy", cp)
-	_context = newContext(make([]m_terminal.Terminal, 0), nil)
 }

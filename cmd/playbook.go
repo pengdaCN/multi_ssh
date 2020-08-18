@@ -6,7 +6,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 	"log"
 	"multi_ssh/extra_mod/playbook"
-	"sync"
+	"multi_ssh/m_terminal"
 )
 
 func init() {
@@ -20,11 +20,8 @@ var playbookCmd = cobra.Command{
 	Args:    cobra.MinimumNArgs(1),
 	Example: "playbook example.play",
 	Run: func(cmd *cobra.Command, args []string) {
-		for _, v := range terminals {
-			playbook.AppendTerm(v)
-		}
 		if err := playbook.VM.DoFile(args[0]); err != nil {
-			log.Println(errors.WithStack(err))
+			log.Println(errors.New("错误文件位置"))
 			return
 		}
 		var (
@@ -35,15 +32,12 @@ var playbookCmd = cobra.Command{
 			log.Println(errors.New("未读取到exec函数，请检查代码"))
 			return
 		}
-		var w sync.WaitGroup
-		for i := 0; i < len(terminals); i++ {
-			w.Add(1)
-			go func(id int) {
-				defer w.Done()
-				co, _ := playbook.VM.NewThread()
-				_, _, _ = playbook.VM.Resume(co, fn, lua.LNumber(id))
-			}(i)
-		}
-		w.Wait()
+		finished := eachTerm(terminals, func(term *m_terminal.Terminal) {
+			playbook.Push(term.GetID(), term)
+			co, _ := playbook.VM.NewThread()
+			_, _, _ = playbook.VM.Resume(co, fn, lua.LNumber(term.GetID()))
+
+		})
+		<-finished
 	},
 }

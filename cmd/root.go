@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const version = `0.2`
+const version = `0.2.1`
 
 var (
 	hosts     string
@@ -95,8 +95,6 @@ var rootCmd = cobra.Command{
 		w2.Wait()
 	},
 }
-
-var Root = &rootCmd
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {

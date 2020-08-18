@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io"
+	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -17,22 +18,32 @@ type SHHUser interface {
 	Auth() []ssh.AuthMethod
 }
 
-var (
-	separate      *regexp.Regexp
-	ignoreLine, _ = regexp.Compile(`^\s*#`)
-	spaceLine, _  = regexp.Compile(`^\s+$`)
-)
-
-func init() {
-	separate, _ = regexp.Compile(`\s*,\s*`)
-	ignoreLine, _ = regexp.Compile(`^\s*#`)
-	spaceLine, _ = regexp.Compile(`^\s+$`)
-}
-
 type SSHUserByPassphrase struct {
 	RemoteHost string
 	UserName   string
 	Password   string
+	ExtraField map[string]string
+}
+
+func ReadLine(line string) *SSHUserByPassphrase {
+	info := ParseLine(line)
+	if info == nil {
+		return nil
+	}
+	return ParseFromRHostInfo(info)
+}
+
+func ParseFromRHostInfo(info *RemoteHostInfo) *SSHUserByPassphrase {
+	s := new(SSHUserByPassphrase)
+	s.UserName = info.UserName
+	s.RemoteHost = info.Host
+	s.Password = info.Passphrase
+	if info.Extra != "" {
+		if ! s.ParseExtra(info.Extra) {
+			log.Printf("host %s 解析扩展字符串失败", info.Host)
+		}
+	}
+	return s
 }
 
 func ReadHosts(path string) ([]*SSHUserByPassphrase, error) {
@@ -86,4 +97,83 @@ func (s *SSHUserByPassphrase) User() string {
 
 func (s *SSHUserByPassphrase) Auth() []ssh.AuthMethod {
 	return []ssh.AuthMethod{ssh.Password(s.Password)}
+}
+
+func (s *SSHUserByPassphrase) Extra() map[string]string {
+	return s.ExtraField
+}
+
+func (s *SSHUserByPassphrase) ParseExtra(str string) bool {
+	_s := strings.ReplaceAll(str, "`", "")
+	m := parseExtraRetMap(_s)
+	if m == nil {
+		return false
+	}
+	s.ExtraField = m
+	return true
+}
+
+var (
+	formatKey, _ = regexp.Compile(`[a-zA-Z][a-z0-9-A-Z]*`)
+	middleSign = '='
+	borderSign = `'"`
+	cfgWord = `\`
+)
+
+func parseExtraRetMap(str string) map[string]string {
+	var (
+		key strings.Builder
+		val strings.Builder
+		border string
+		stat uint8
+	)
+	rst := make(map[string]string)
+	for _, w := range str {
+		switch  {
+		case stat == 0b0000:
+			if formatKey.MatchString(string(w)) {
+				stat = 0b0001
+				key.WriteRune(w)
+				continue
+			}
+			continue
+		case stat == 0b0001:
+			if w == middleSign {
+				stat = 0b0011
+				continue
+			}
+			if formatKey.MatchString(string(w)) {
+				key.WriteRune(w)
+				continue
+			}
+			break
+		case stat == 0b0011:
+			if strings.Contains(borderSign, string(w)) {
+				idx := strings.Index(borderSign, string(w))
+				border = string(borderSign[idx])
+				stat = 0b0111
+			}
+			break
+		case stat == 0b0111:
+			if cfgWord == string(w) {
+				stat = 0b1111
+				continue
+			}
+			if border == string(w) {
+				k := key.String()
+				v := val.String()
+				rst[k] = v
+				key = strings.Builder{}
+				val = strings.Builder{}
+				stat = 0b0000
+				continue
+			}
+			val.WriteRune(w)
+			continue
+		case stat == 0b1111:
+			val.WriteRune(w)
+			continue
+		}
+	}
+	return rst
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io"
@@ -16,23 +17,33 @@ import (
 
 const defaultOutputFormat = "#{user}@#{host}: {#{msg}}\n"
 
-var printf reflect.Value
+var (
+	printf  reflect.Value
+	outFunc map[string]outAttribute
+)
 
-type outAttribute func(*execResult) string
-
-var outFunc map[string]outAttribute
-
-type execResult struct {
-	u       model.SHHUser
-	msg     []byte
-	errInfo string
-	code    int
-}
-
-type eachFunc func(term *m_terminal.Terminal)
+type (
+	outAttribute func(*execResult) string
+	execResult   struct {
+		u       model.SHHUser
+		msg     []byte
+		errInfo string
+		code    int
+	}
+	eachFunc func(term *m_terminal.Terminal)
+)
 
 func eachTerm(terms []*m_terminal.Terminal, fn eachFunc) chan struct{} {
 	finish := make(chan struct{}, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// 当timeout 设置为-1时，没有任务超时
+		if timeout == -1 {
+			return
+		}
+		<-time.NewTimer(timeout).C
+		cancel()
+	}()
 	go func() {
 		defer func() {
 			finish <- struct{}{}
@@ -47,17 +58,11 @@ func eachTerm(terms []*m_terminal.Terminal, fn eachFunc) chan struct{} {
 					fn(term)
 					ch <- struct{}{}
 				}()
-				// 当时timeout 等于-1是则用不超时
-				if timeout == -1 {
-					<-ch
-					return
-				}
 				// 设置任务超时
 				select {
 				case <-ch:
-				case <-time.After(timeout):
-					log.Println("任务执行超时")
-					return
+				case <-ctx.Done():
+					log.Printf("Host: %s timeout", term.GetUser().Host())
 				}
 			}(terms[i])
 		}
@@ -105,7 +110,7 @@ func init() {
 		return result.errInfo
 	})
 	outRegistry("code", func(result *execResult) string {
-		return string(result.code)
+		return fmt.Sprintf("%d", result.code)
 	})
 }
 

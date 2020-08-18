@@ -36,16 +36,6 @@ func String2ByteSlice(s string) []byte {
 	return *(*[]byte)(unsafe.Pointer(&slice))
 }
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-func RandStringBytes(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
-}
-
 // 转换特殊字符，如\n \t
 // 目前仅支持\n \t
 func SpecialStrTransform(str string) string {
