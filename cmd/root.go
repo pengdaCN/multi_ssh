@@ -48,9 +48,9 @@ var rootCmd = cobra.Command{
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if hostLine != "" {
-			u, err := model.NewSSHUserByPassphraseWithStringLine(hostLine)
-			if err != nil {
-				log.Fatalln("ERROR 使用命令行参数错误", err)
+			u := model.ReadLine(hostLine)
+			if u != nil {
+				log.Fatalln("ERROR 使用命令行参数错误")
 			}
 			users = append(users, u)
 		} else {

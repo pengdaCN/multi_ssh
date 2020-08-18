@@ -1,12 +1,21 @@
 package model
 
-import "regexp"
+import (
+	"regexp"
+	"strings"
+)
 
 var (
-	separate, _ = regexp.Compile(`\s*,\s*`)
+	separate, _   = regexp.Compile(`\s*,\s*`)
 	ignoreLine, _ = regexp.Compile(`^\s*#`)
-	spaceLine, _ = regexp.Compile(`^\s+$`)
-	extraPiece, _ = regexp.Compile("(.*) +(`.*`)")
+	spaceLine, _  = regexp.Compile(`^\s+$`)
+)
+
+const (
+	// 定义扩展信息开始标志
+	keyWord = "`"
+	// 定义包括扩展信息，主机信息结束标志
+	keyWord1 = `;`
 )
 
 type RemoteHostInfo struct {
@@ -21,17 +30,26 @@ func ParseLine(line string) *RemoteHostInfo {
 	if ignoreLine.MatchString(line) || ignoreLine.MatchString(line) {
 		return nil
 	}
-	sli := extraPiece.FindStringSubmatch(line)
-	if len(sli) < 2 {
-		return nil
+	var (
+		hostInfo  string
+		extraInfo string
+	)
+	hostInfo = line
+	if endIdx := strings.Index(line, keyWord1); endIdx != -1 {
+		t := strings.Index(line, keyWord)
+		if t != -1 {
+			if endIdx < t {
+				hostInfo = line[:endIdx]
+				extraInfo = line[endIdx+1:]
+			}
+		}
+		hostInfo = line[:endIdx]
 	}
 	r := new(RemoteHostInfo)
-	if ! parseBase(r, sli[1]) {
+	if !parseBase(r, hostInfo) {
 		return nil
 	}
-	if len(sli) >= 3 {
-		r.Extra = sli[2]
-	}
+	r.Extra = extraInfo
 	return r
 }
 
@@ -40,8 +58,8 @@ func parseBase(r *RemoteHostInfo, str string) bool {
 	if len(arr) != 3 {
 		return false
 	}
-	r.UserName = arr[0]
-	r.Passphrase = arr[1]
-	r.Host = arr[2]
+	r.UserName = strings.TrimSpace(arr[0])
+	r.Passphrase = strings.TrimSpace(arr[1])
+	r.Host = strings.TrimSpace(arr[2])
 	return true
 }

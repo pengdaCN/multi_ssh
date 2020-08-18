@@ -2,12 +2,10 @@ package model
 
 import (
 	"bufio"
-	"errors"
-	"fmt"
+	"bytes"
 	"golang.org/x/crypto/ssh"
-	"io"
+	"io/ioutil"
 	"log"
-	"os"
 	"regexp"
 	"strings"
 )
@@ -16,6 +14,7 @@ type SHHUser interface {
 	Host() string
 	User() string
 	Auth() []ssh.AuthMethod
+	Extra() map[string]string
 }
 
 type SSHUserByPassphrase struct {
@@ -23,6 +22,29 @@ type SSHUserByPassphrase struct {
 	UserName   string
 	Password   string
 	ExtraField map[string]string
+}
+
+func ReadHosts(fil string) ([]*SSHUserByPassphrase, error) {
+	context, err := ioutil.ReadFile(fil)
+	if err != nil {
+		return nil, err
+	}
+	read := bufio.NewReader(bytes.NewReader(context))
+	rst := make([]*SSHUserByPassphrase, 0)
+	for {
+		line, err := read.ReadString('\n')
+		line = strings.TrimSpace(line)
+		if err != nil {
+			if s := ReadLine(line); s != nil {
+				rst = append(rst, s)
+			}
+			break
+		}
+		if s := ReadLine(line); s != nil {
+			rst = append(rst, s)
+		}
+	}
+	return rst, nil
 }
 
 func ReadLine(line string) *SSHUserByPassphrase {
@@ -39,52 +61,11 @@ func ParseFromRHostInfo(info *RemoteHostInfo) *SSHUserByPassphrase {
 	s.RemoteHost = info.Host
 	s.Password = info.Passphrase
 	if info.Extra != "" {
-		if ! s.ParseExtra(info.Extra) {
+		if !s.ParseExtra(info.Extra) {
 			log.Printf("host %s 解析扩展字符串失败", info.Host)
 		}
 	}
 	return s
-}
-
-func ReadHosts(path string) ([]*SSHUserByPassphrase, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("%s 打开失败 %s", path, err.Error())
-	}
-	buf := bufio.NewReader(f)
-	rst := make([]*SSHUserByPassphrase, 0)
-	for {
-		line, err := buf.ReadString('\n')
-		if line == "" && err == io.EOF {
-			return rst, nil
-		}
-		if spaceLine.MatchString(line) || line == "" {
-			continue
-		}
-		if ignoreLine.MatchString(line) {
-			continue
-		}
-		u, err := NewSSHUserByPassphraseWithStringLine(line)
-		if err != nil {
-			return rst, err
-		}
-		rst = append(rst, u)
-	}
-	return rst, nil
-}
-
-func NewSSHUserByPassphraseWithStringLine(line string) (*SSHUserByPassphrase, error) {
-	line = strings.TrimSpace(line)
-	piece := separate.Split(line, -1)
-	if len(piece) < 3 {
-		return nil, errors.New("解析一行数据错误")
-	}
-	u := SSHUserByPassphrase{
-		UserName:   piece[0],
-		Password:   piece[1],
-		RemoteHost: piece[2],
-	}
-	return &u, nil
 }
 
 func (s *SSHUserByPassphrase) Host() string {
@@ -114,65 +95,99 @@ func (s *SSHUserByPassphrase) ParseExtra(str string) bool {
 }
 
 var (
+	// 用于匹配 key是否是合法字符
 	formatKey, _ = regexp.Compile(`[a-zA-Z][a-z0-9-A-Z]*`)
+	// 用于匹配是否是合法分隔符
+	_separate, _ = regexp.Compile(`\s`)
+	_space, _    = regexp.Compile(`\s`)
+)
+
+const (
+	// step 还没开始匹配key，准备key匹配阶段
+	step uint8 = iota
+	// step1 正在进行配置key，按照[a-zA-Z][a-z0-9A-Z]* 方式匹配
+	step1
+	// step2 结束key配置，当匹配到=号时结束key匹配，准备进行val的匹配
+	step2
+	// step3 当匹配到'"中的一个开始匹配val，去后面的字符都是val，当匹配到'"时结束匹配
+	step3
+	// step4 当匹配到转义字符时
+	step4
+	// step5 结果一次完整的key="val" 匹配，但是还没开始新的一次匹配
+	step5
+	// 中间符号，key="val" 两边没有空格
 	middleSign = '='
+	// 用于包括val的可允许的字符
 	borderSign = `'"`
+	// 用于转义的字符
 	cfgWord = `\`
 )
 
 func parseExtraRetMap(str string) map[string]string {
 	var (
-		key strings.Builder
-		val strings.Builder
+		key    strings.Builder
+		val    strings.Builder
 		border string
-		stat uint8
+		stat   uint8
 	)
 	rst := make(map[string]string)
 	for _, w := range str {
-		switch  {
-		case stat == 0b0000:
-			if formatKey.MatchString(string(w)) {
-				stat = 0b0001
+		switch {
+		case stat == step:
+			if !_space.MatchString(string(w)) {
+				stat = step1
 				key.WriteRune(w)
 				continue
 			}
 			continue
-		case stat == 0b0001:
+		case stat == step1:
 			if w == middleSign {
-				stat = 0b0011
+				stat = step2
 				continue
 			}
-			if formatKey.MatchString(string(w)) {
+			if !_space.MatchString(string(w)) {
 				key.WriteRune(w)
 				continue
 			}
-			break
-		case stat == 0b0011:
+			return rst
+		case stat == step2:
 			if strings.Contains(borderSign, string(w)) {
 				idx := strings.Index(borderSign, string(w))
 				border = string(borderSign[idx])
-				stat = 0b0111
+				stat = step3
+				continue
 			}
-			break
-		case stat == 0b0111:
+			return rst
+		case stat == step3:
 			if cfgWord == string(w) {
-				stat = 0b1111
+				stat = step4
 				continue
 			}
 			if border == string(w) {
 				k := key.String()
 				v := val.String()
+				// key 不满足格式直接结束配置
+				if !formatKey.MatchString(k) {
+					return rst
+				}
 				rst[k] = v
 				key = strings.Builder{}
 				val = strings.Builder{}
-				stat = 0b0000
+				stat = step5
 				continue
 			}
 			val.WriteRune(w)
 			continue
-		case stat == 0b1111:
+		case stat == step4:
 			val.WriteRune(w)
 			continue
+		case stat == step5:
+			if _separate.MatchString(string(w)) {
+				stat = step
+				continue
+			}
+			// 当匹配结果后不是合法分割符，直接结束配置
+			return rst
 		}
 	}
 	return rst
