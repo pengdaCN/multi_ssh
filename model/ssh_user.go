@@ -149,7 +149,7 @@ func parseExtraRetMap(str string) map[string]string {
 				key.WriteRune(w)
 				continue
 			}
-			return rst
+			goto END
 		case stat == step2:
 			if strings.Contains(borderSign, string(w)) {
 				idx := strings.Index(borderSign, string(w))
@@ -157,7 +157,7 @@ func parseExtraRetMap(str string) map[string]string {
 				stat = step3
 				continue
 			}
-			return rst
+			goto END
 		case stat == step3:
 			if cfgWord == string(w) {
 				stat = step4
@@ -168,7 +168,7 @@ func parseExtraRetMap(str string) map[string]string {
 				v := val.String()
 				// key 不满足格式直接结束配置
 				if !formatKey.MatchString(k) {
-					return rst
+					goto END
 				}
 				rst[k] = v
 				key = strings.Builder{}
@@ -187,8 +187,9 @@ func parseExtraRetMap(str string) map[string]string {
 				continue
 			}
 			// 当匹配结果后不是合法分割符，直接结束配置
-			return rst
+			goto END
 		}
 	}
+END:
 	return rst
 }
