@@ -16,6 +16,7 @@ func init() {
 	VM.Register("extraInfo", extraInfo)
 	VM.Register("hostInfo", hostInfo)
 	VM.Register("out", out)
+	VM.Register("outln", outln)
 	VM.Register("setCode", setCode)
 	VM.Register("setErrInfo", setErrInfo)
 }

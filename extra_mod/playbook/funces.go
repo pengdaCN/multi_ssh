@@ -1,6 +1,7 @@
 package playbook
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	lua "github.com/yuin/gopher-lua"
 	"log"
@@ -119,8 +120,8 @@ const (
 	OutKey = "output"
 )
 
-// output(id int, msg string)
-// output 函数可以设置格式，在tab中的'format'键定义格式，与#{key}
+// out(id int, msg string)
+// out 函数可以设置格式，在tab中的'format'键定义格式，与#{key}
 func out(state *lua.LState) int {
 	id := state.ToInt(1)
 	msg := state.ToString(2)
@@ -138,6 +139,28 @@ func out(state *lua.LState) int {
 		b = v.(*strings.Builder)
 	}
 	b.WriteString(msg)
+	return 0
+}
+
+// outln(id int, msg string)
+// outln 函数可以设置格式，在tab中的'format'键定义格式，与#{key}
+func outln(state *lua.LState) int {
+	id := state.ToInt(1)
+	msg := state.ToString(2)
+	term, ok := Get(id)
+	if !ok {
+		log.Printf("错误，执行lua out 执行时，错误的id: %d\n", id)
+		return 0
+	}
+	var b *strings.Builder
+	v, ok := term.GetOnceShare(OutKey)
+	if !ok {
+		b = new(strings.Builder)
+		term.SetShare(OutKey, b)
+	} else {
+		b = v.(*strings.Builder)
+	}
+	b.WriteString(fmt.Sprintln(msg))
 	return 0
 }
 
