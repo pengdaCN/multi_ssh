@@ -45,6 +45,7 @@ func DefaultWithPassphrase(user model.SHHUser) (*Terminal, error) {
 		return nil, err
 	}
 	term.RreUse(ExpandCmd)
+	term.PostUse(TrimSudo)
 	return term, nil
 }
 
@@ -88,26 +89,26 @@ func (t *Terminal) pressCmd(cmd string) {
 	t.currentCmd = cmdPrefixGeneric + cmd
 }
 
-func (t *Terminal) Script(sudo bool, fil io.Reader, args string) ([]byte, error) {
+func (t *Terminal) Script(sudo bool, fil io.Reader, args string) *Result {
 	filename := fmt.Sprintf(`__multi_ssh__.%s.sh`, tools.GenerateRandomStr(10))
 	err := t.SftpUpdateByReaderWithFunc(filename, fil, `/tmp`, nil)
 	if err != nil {
-		return nil, err
+		return buildRstByErr(err)
 	}
 	var prefix string
 	if sudo {
 		prefix = "sudo -s "
 	}
-	rst, err := t.Run(sudo, fmt.Sprintf(`%sbash /tmp/%s %s`, prefix, filename, args))
+	rst := t.Run(sudo, fmt.Sprintf(`%sbash /tmp/%s %s`, prefix, filename, args))
 	_ = t.Remove(fmt.Sprintf(`/tmp/%s`, filename))
-	return rst, err
+	return rst
 }
 
 func (t *Terminal) GetID() int {
 	return t.id
 }
 
-func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {
+func (t *Terminal) Run(sudo bool, cmd string) *Result {
 	defer func() {
 		t.preIndex = 0
 		t.postIndex = 0
@@ -116,14 +117,14 @@ func (t *Terminal) Run(sudo bool, cmd string) ([]byte, error) {
 	for ; t.preIndex < uint8(len(t.preHook)); t.preIndex++ {
 		t.preHook[t.preIndex](t)
 	}
-	rst, err := t.run(sudo, t.currentCmd)
-	if err != nil {
-		//	TODO 后续添加，对于执行命令报错的处理
-	}
+	bs, err := t.run(sudo, t.currentCmd)
+	str := string(bs)
+	rst := buildRst(str, err)
+	t.content.result = rst
 	for ; t.postIndex < uint8(len(t.postHook)); t.postIndex++ {
 		t.postHook[t.postIndex](t)
 	}
-	return rst, err
+	return rst
 }
 
 func (t *Terminal) run(sudo bool, cmd string) ([]byte, error) {

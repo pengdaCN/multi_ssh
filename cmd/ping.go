@@ -19,8 +19,10 @@ var pingCmd = cobra.Command{
 		ch := make(chan *execResult, 0)
 		outFinish := output(ch, pingShowFormat, os.Stdout)
 		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
-			_, err := term.Run(false, "whoami")
-			ch <- buildExecResult(term, []byte(`OK`), err)
+			rst := term.Run(false, "whoami")
+			r := buildExecResultFromResult(rst)
+			r.u = term.GetUser()
+			ch <- r
 		})
 		<-execFinish
 		close(ch)

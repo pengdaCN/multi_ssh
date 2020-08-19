@@ -4,32 +4,31 @@ import (
 	"github.com/pkg/errors"
 	lua "github.com/yuin/gopher-lua"
 	"log"
+	"multi_ssh/m_terminal"
 	"os"
 	"strings"
 )
 
 // shell(id int, sudo bool, cmd string) out -> playbookResult
 func shell(state *lua.LState) int {
-	genericFuncSendRst(state, func(state *lua.LState) *playbookResult {
+	genericFuncSendRst(state, func(state *lua.LState) *m_terminal.Result {
 		id := state.ToInt(1)
 		sudo := state.ToBool(2)
 		cmd := state.ToString(3)
 		term, ok := Get(id)
 		if !ok {
 			log.Println("错误，执行lua shell 执行时，错误的id")
-			return buildPlaybookWithCode(1)
+			return m_terminal.BuildRstWithCode(1)
 		}
-		rst, err := term.Run(sudo, cmd)
-		p := buildPlaybookResult(rst, err)
-		p.u = term.GetUser()
-		return p
+		rst := term.Run(sudo, cmd)
+		return rst
 	})
 	return 1
 }
 
 // script(id int, sudo bool, script_path string, args string) out -> playbookResult
 func script(state *lua.LState) int {
-	genericFuncSendRst(state, func(state *lua.LState) *playbookResult {
+	genericFuncSendRst(state, func(state *lua.LState) *m_terminal.Result {
 		id := state.ToInt(1)
 		sudo := state.ToBool(2)
 		scriptPath := state.ToString(3)
@@ -37,24 +36,23 @@ func script(state *lua.LState) int {
 		term, ok := Get(id)
 		if !ok {
 			log.Println("错误，执行lua script 执行时，错误的id")
-			return buildPlaybookWithCode(1)
+			return m_terminal.BuildRstWithCode(1)
 		}
 		fil, err := os.Open(scriptPath)
 		if err != nil {
 			log.Println(errors.WithStack(err))
-			return buildPlaybookWithCode(1)
+			return m_terminal.BuildRstWithCode(1)
+
 		}
-		rst, err := term.Script(sudo, fil, args)
-		p := buildPlaybookResult(rst, err)
-		p.u = term.GetUser()
-		return p
+		rst := term.Script(sudo, fil, args)
+		return rst
 	})
 	return 1
 }
 
 // copy(id int, sudo, exists bool, src []string, dst string, attr map<lua table>) out -> playbookResult
 func cp(state *lua.LState) int {
-	genericFuncSendRst(state, func(state *lua.LState) *playbookResult {
+	genericFuncSendRst(state, func(state *lua.LState) *m_terminal.Result {
 		id := state.ToInt(1)
 		sudo := state.ToBool(2)
 		exists := state.ToBool(3)
@@ -66,11 +64,11 @@ func cp(state *lua.LState) int {
 		term, ok := Get(id)
 		if !ok {
 			log.Printf("错误，执行lua copy 执行时，错误的id: %d\n", id)
-			return buildPlaybookWithCode(1)
+			return m_terminal.BuildRstWithCode(1)
 		}
-		err := term.Copy(exists, sudo, src, dst, attr)
-		p := buildPlaybookResultWithErr(err)
-		return p
+		rst := term.Copy(exists, sudo, src, dst, attr)
+
+		return rst
 	})
 	return 1
 }
@@ -182,7 +180,7 @@ func setErrInfo(state *lua.LState) int {
 }
 
 // 通用处理方法，回自动发送返回值
-func genericFuncSendRst(state *lua.LState, fn func(*lua.LState) *playbookResult) {
+func genericFuncSendRst(state *lua.LState, fn func(*lua.LState) *m_terminal.Result) {
 	rst := fn(state)
 	state.Push(rstToLTable(state, rst))
 }

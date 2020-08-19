@@ -53,20 +53,20 @@ func (t *Terminal) expandDir(path string) (string, bool) {
 //@exists 参数为true，上传的目录不存在就创建
 //@sudo 参数为true，上传放置在任何root可以方式目录
 //@fn 对上传文件设置额外操作
-func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string, fn HandleByFile) error {
+func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string, fn HandleByFile) *Result {
 	info, _ := t.GetContent().GetHostInfo()
 	expandPath, _ := t.expandDir(remotePath)
 	if exist {
 		err := exists(t, sudo, expandPath)
 		if err != nil {
-			return err
+			return buildRstByErr(err)
 		}
 	}
 	if sudo {
 		if !inRange(info, remotePath) {
 			err := t.SftpUpdates(srcPaths, "/tmp", fn)
 			if err != nil {
-				return err
+				return buildRstByErr(err)
 			}
 			filenames := make([]string, 0, len(srcPaths))
 			for i := 0; i < len(srcPaths); i++ {
@@ -75,18 +75,19 @@ func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string, 
 			if len(filenames) < 1 {
 				_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/%s /%s`, filenames[0], expandPath))
 				if err != nil {
-					return err
+					return buildRstByErr(err)
 				}
 			} else {
 				_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/{%s} %s`, strings.Join(filenames, ","), expandPath))
 				if err != nil {
-					return err
+					return buildRstByErr(err)
 				}
 			}
-			return nil
+			return buildRstWithOK()
 		}
 	}
-	return t.SftpUpdates(srcPaths, expandPath, fn)
+	err := t.SftpUpdates(srcPaths, expandPath, fn)
+	return buildRstByErr(err)
 }
 
 // 保证远程目录一定存在

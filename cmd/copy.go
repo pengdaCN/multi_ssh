@@ -35,7 +35,7 @@ var copyCmd = cobra.Command{
 		ch := make(chan *execResult, 0)
 		outFinish := output(ch, outFormat, os.Stdout)
 		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
-			err := term.Copy(copyExists, copySudo, srcPaths, dstPath, func(file *sftp.File) error {
+			rst := term.Copy(copyExists, copySudo, srcPaths, dstPath, func(file *sftp.File) error {
 				if mode != "" {
 					m, err := tools.String2FileMode(mode)
 					if err != nil {
@@ -52,7 +52,9 @@ var copyCmd = cobra.Command{
 				}
 				return nil
 			})
-			ch <- buildExecResultByErr(term, err)
+			r := buildExecResultFromResult(rst)
+			r.u = term.GetUser()
+			ch <- r
 		})
 		<-execFinish
 		close(ch)

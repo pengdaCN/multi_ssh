@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"io"
 	"log"
 	"multi_ssh/m_terminal"
@@ -15,7 +14,7 @@ import (
 	"time"
 )
 
-const defaultOutputFormat = "#{user}@#{host}: {#{msg}}\n"
+const defaultOutputFormat = "#{user}@#{host}: {\n#{msg}\n}\n"
 
 var (
 	printf  reflect.Value
@@ -26,12 +25,32 @@ type (
 	outAttribute func(*execResult) string
 	execResult   struct {
 		u       model.SHHUser
-		msg     []byte
+		msg     string
 		errInfo string
 		code    int
 	}
 	eachFunc func(term *m_terminal.Terminal)
 )
+
+func init() {
+	outFunc = make(map[string]outAttribute)
+	printf = reflect.ValueOf(fmt.Sprintf)
+	outRegistry("user", func(result *execResult) string {
+		return result.u.User()
+	})
+	outRegistry("host", func(result *execResult) string {
+		return result.u.Host()
+	})
+	outRegistry("msg", func(result *execResult) string {
+		return result.msg
+	})
+	outRegistry("err", func(result *execResult) string {
+		return result.errInfo
+	})
+	outRegistry("code", func(result *execResult) string {
+		return fmt.Sprintf("%d", result.code)
+	})
+}
 
 func eachTerm(terms []*m_terminal.Terminal, fn eachFunc) chan struct{} {
 	finish := make(chan struct{}, 0)
@@ -71,47 +90,14 @@ func eachTerm(terms []*m_terminal.Terminal, fn eachFunc) chan struct{} {
 	return finish
 }
 
-func buildExecResult(term *m_terminal.Terminal, rst []byte, err error) *execResult {
-	r := new(execResult)
-	r.u = term.GetUser()
-	r.msg = rst
-	if err != nil {
-		r.errInfo = err.Error()
+func buildExecResultFromResult(r *m_terminal.Result) *execResult {
+	rst := new(execResult)
+	{
+		rst.msg = r.Msg()
+		rst.errInfo = r.ErrInfo()
+		rst.code = r.Code()
 	}
-	if exit, ok := err.(*ssh.ExitError); ok {
-		r.code = exit.ExitStatus()
-	}
-	return r
-}
-
-func buildExecResultByErr(term *m_terminal.Terminal, err error) *execResult {
-	r := buildExecResult(term, nil, err)
-	if err == nil {
-		r.msg = []byte("OK")
-	} else {
-		r.msg = []byte(r.errInfo)
-	}
-	return r
-}
-
-func init() {
-	outFunc = make(map[string]outAttribute)
-	printf = reflect.ValueOf(fmt.Sprintf)
-	outRegistry("user", func(result *execResult) string {
-		return result.u.User()
-	})
-	outRegistry("host", func(result *execResult) string {
-		return result.u.Host()
-	})
-	outRegistry("msg", func(result *execResult) string {
-		return tools.ByteSlice2String(result.msg)
-	})
-	outRegistry("err", func(result *execResult) string {
-		return result.errInfo
-	})
-	outRegistry("code", func(result *execResult) string {
-		return fmt.Sprintf("%d", result.code)
-	})
+	return rst
 }
 
 func outRegistry(key string, val outAttribute) {

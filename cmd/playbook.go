@@ -7,7 +7,6 @@ import (
 	"log"
 	"multi_ssh/extra_mod/playbook"
 	"multi_ssh/m_terminal"
-	"multi_ssh/tools"
 	"os"
 	"strings"
 )
@@ -42,7 +41,7 @@ var playbookCmd = cobra.Command{
 			co, _ := playbook.VM.NewThread()
 			_, err, _ := playbook.VM.Resume(co, fn, lua.LNumber(term.GetID()))
 			var (
-				msg     []byte
+				msg     string
 				code    int
 				errInfo string
 			)
@@ -53,7 +52,7 @@ var playbookCmd = cobra.Command{
 			if ok {
 				sb := out.(*strings.Builder)
 				str := sb.String()
-				msg = tools.String2ByteSlice(str)
+				msg = str
 			}
 			c, ok := term.GetOnceShare(playbook.Code)
 			if ok {

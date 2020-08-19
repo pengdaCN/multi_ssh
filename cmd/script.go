@@ -44,8 +44,10 @@ var scriptCmd = cobra.Command{
 			panic(err)
 		}
 		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
-			rst, err := term.Script(scriptSudo, bytes.NewReader(scriptContext), scriptArgs)
-			ch <- buildExecResult(term, rst, err)
+			rst := term.Script(scriptSudo, bytes.NewReader(scriptContext), scriptArgs)
+			r := buildExecResultFromResult(rst)
+			r.u = term.GetUser()
+			ch <- r
 		})
 		<-execFinish
 		close(ch)

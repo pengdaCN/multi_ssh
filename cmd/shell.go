@@ -37,8 +37,10 @@ var shellCmd = cobra.Command{
 		}
 		outFinish := output(ch, outFormat, out...)
 		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
-			rst, err := term.Run(shellSudo, args[0])
-			ch <- buildExecResult(term, rst, err)
+			rst := term.Run(shellSudo, args[0])
+			r := buildExecResultFromResult(rst)
+			r.u = term.GetUser()
+			ch <- r
 		})
 		<-execFinish
 		close(ch)
