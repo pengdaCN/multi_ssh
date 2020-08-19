@@ -7,6 +7,9 @@ import (
 	"log"
 	"multi_ssh/extra_mod/playbook"
 	"multi_ssh/m_terminal"
+	"multi_ssh/tools"
+	"os"
+	"strings"
 )
 
 func init() {
@@ -20,6 +23,8 @@ var playbookCmd = cobra.Command{
 	Args:    cobra.MinimumNArgs(1),
 	Example: "playbook example.play",
 	Run: func(cmd *cobra.Command, args []string) {
+		ch := make(chan *execResult, 0)
+		outFinish := output(ch, outFormat, os.Stdout)
 		if err := playbook.VM.DoFile(args[0]); err != nil {
 			log.Println(errors.New("错误文件位置"))
 			return
@@ -35,9 +40,40 @@ var playbookCmd = cobra.Command{
 		finished := eachTerm(terminals, func(term *m_terminal.Terminal) {
 			playbook.Push(term.GetID(), term)
 			co, _ := playbook.VM.NewThread()
-			_, _, _ = playbook.VM.Resume(co, fn, lua.LNumber(term.GetID()))
-
+			_, err, _ := playbook.VM.Resume(co, fn, lua.LNumber(term.GetID()))
+			var (
+				msg     []byte
+				code    int
+				errInfo string
+			)
+			if err != nil {
+				log.Println(err.Error())
+			}
+			out, ok := term.GetOnceShare(playbook.OutKey)
+			if ok {
+				sb := out.(*strings.Builder)
+				str := sb.String()
+				msg = tools.String2ByteSlice(str)
+			}
+			c, ok := term.GetOnceShare(playbook.Code)
+			if ok {
+				code, _ = c.(int)
+			}
+			_errInfo, ok := term.GetOnceShare(playbook.ErrInfo)
+			if ok {
+				errInfo, _ = _errInfo.(string)
+			}
+			rst := new(execResult)
+			{
+				rst.errInfo = errInfo
+				rst.msg = msg
+				rst.code = code
+				rst.u = term.GetUser()
+			}
+			ch <- rst
 		})
 		<-finished
+		close(ch)
+		<-outFinish
 	},
 }

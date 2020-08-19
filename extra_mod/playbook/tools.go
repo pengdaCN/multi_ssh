@@ -103,6 +103,14 @@ func lTableToMapStrLValue(src *lua.LTable) map[string]lua.LValue {
 	return rst
 }
 
+func mapToLTable(src *lua.LState, m map[string]string) *lua.LTable {
+	tab := src.NewTable()
+	for k, v := range m {
+		tab.RawSetString(k, lua.LString(v))
+	}
+	return tab
+}
+
 func buildHandleByFileWithLTable(src *lua.LTable) m_terminal.HandleByFile {
 	m := lTableToMapStrLValue(src)
 	var (

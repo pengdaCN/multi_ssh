@@ -67,6 +67,15 @@ func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
 	}, nil
 }
 
+func (t *Terminal) SetShare(key string, val interface{}) {
+	t.content.sharePool[key] = val
+}
+
+func (t *Terminal) GetOnceShare(key string) (interface{}, bool) {
+	val, ok := t.content.sharePool[key]
+	return val, ok
+}
+
 func (t *Terminal) RreUse(fn ...HookFunc) {
 	t.preHook = append(t.preHook, fn...)
 }

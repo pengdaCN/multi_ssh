@@ -2,9 +2,11 @@ package m_terminal
 
 import (
 	"multi_ssh/extra_mod/host_info"
+	"strings"
 )
 
 type content struct {
+	out       strings.Builder
 	sharePool map[string]interface{}
 }
 
