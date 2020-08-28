@@ -23,14 +23,27 @@ multi_ssh --line 'panda, 123456, local.panda.org:22' shell 'whoami'
 
 --format：定义输出的格式
 
+--filter：通过命令行指定，选择需要执行的主机
+
+```
+格式如下：
+字段!=/==值
+如：
+work="p" group="worker1"
+表示选择扩展字段work="p" group="worker1"的主机
+目前filter功能只支持扩展字段的处理，或许计划添加ip的选择
+```
+
 **hosts文件格式**
 
 ```
-panda, 123456, lcoal.pengda.org:22
+panda, 123456, lcoal.pengda.org:22; `group="work1" cpu="intel"`
 # panda, 123456, lcoal.pengda.org:22
 ```
 
-hosts文件有三个字段，分别由`,`分割，别是登录用户名，密码，主机位置，由`#`号开头为注释
+hosts文件有四个字段，分别由`,`分割，别是登录用户名，密码，主机位置，扩展信息，由`#`号开头为注释
+
+扩展信息由反引号包裹，语法与golang的struct的tag一样
 
 **format格式定义**
 
@@ -144,3 +157,12 @@ end
 ```
 
 exec方法的id有multi_ssh调用时自动传入
+
+playbook新增函数：
+
+1. out 用于输出打印数据，格式有--format指定
+2. extraInfo 用于获取当前执行的主机的扩展信息
+3. hostInfo 用于获取主机的信息
+4. outln 换行输出
+5. setCode 设置返回状态码
+6. setErrInfo 设置错误信息

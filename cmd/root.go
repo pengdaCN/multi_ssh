@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"github.com/spf13/cobra"
 	"log"
 	"multi_ssh/m_terminal"
@@ -17,6 +16,7 @@ var (
 	hosts     string
 	hostLine  string
 	outFormat string
+	filterStr string
 	preInfo   bool
 )
 
@@ -30,6 +30,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&hosts, "hosts", "", "./hosts", "multi_ssh 读取hosts配置文件")
 	rootCmd.Flags().StringVarP(&hostLine, "line", "", "", "从cli中读取要连接的信息")
 	rootCmd.Flags().StringVarP(&outFormat, "format", "f", defaultOutputFormat, "以指定格式输出信息")
+	rootCmd.Flags().StringVarP(&filterStr, "filter", "F", "", "使用格式选择需要执行的主机")
 	rootCmd.Flags().BoolVarP(&preInfo, "uinfo", "", true, "是否在对主机操作之前获取他的信息")
 	rootCmd.Flags().DurationVarP(&timeout, "wait", "w", -1, "设置超时，默认不永不超时")
 }
@@ -40,12 +41,7 @@ var rootCmd = cobra.Command{
 	Long:             "这是一个简单的cli的并发ssh client工具",
 	Version:          version,
 	TraverseChildren: true,
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 0 {
-			return errors.New("错误的位置参数")
-		}
-		return nil
-	},
+	Args:             cobra.MaximumNArgs(0),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if hostLine != "" {
 			u := model.ReadLine(hostLine)
@@ -62,6 +58,9 @@ var rootCmd = cobra.Command{
 			for _, u := range us {
 				users = append(users, u)
 			}
+		}
+		if filterStr != "" {
+			users = filters(users, filterStr)
 		}
 		ch := make(chan *m_terminal.Terminal, 0)
 		var w sync.WaitGroup
