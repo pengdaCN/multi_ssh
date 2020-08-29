@@ -1,14 +1,13 @@
 package tools
 
-import "sync"
+import "sync/atomic"
 
 var (
 	generateID *IdSeed
 )
 
 type IdSeed struct {
-	id int
-	sync.RWMutex
+	id int32
 }
 
 func init() {
@@ -16,11 +15,7 @@ func init() {
 }
 
 func (i *IdSeed) GetID() int {
-	rst := i.id
-	i.Lock()
-	i.id++
-	i.Unlock()
-	return rst
+	return int(atomic.AddInt32(&i.id, 1))
 }
 
 func SetGenerateIDSeed(i *IdSeed) {

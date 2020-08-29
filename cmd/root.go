@@ -45,7 +45,7 @@ var rootCmd = cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if hostLine != "" {
 			u := model.ReadLine(hostLine)
-			if u != nil {
+			if u == nil {
 				log.Fatalln("ERROR 使用命令行参数错误")
 			}
 			users = append(users, u)
