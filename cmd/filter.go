@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"multi_ssh/extra_mod/pool"
 	"multi_ssh/model"
+	"net"
+	"strconv"
 	"strings"
 )
 
@@ -21,7 +24,9 @@ var (
 	s2op  map[string]op
 	opStr []string
 	pM    = map[string]matchFunc{
-		"ip": matchIP,
+		"IP":   matchIP,
+		"USER": matchUser,
+		"PORT": matchPort,
 	}
 )
 
@@ -70,9 +75,246 @@ func filter(src model.SHHUser, fi []piece) bool {
 	return true
 }
 
-func matchIP(h model.SHHUser, t *token) bool {
+const (
+	rangeKeyword = '-'
+	manyKeyword  = ','
+	netKeyword   = '/'
+)
 
+type (
+	ipHandle func(net.IP, string) bool
+)
+
+var (
+	mIPm = map[rune]ipHandle{
+		-1:           matchIPSingle,
+		rangeKeyword: matchIPManyRange,
+		manyKeyword:  matchIPManyRange,
+		netKeyword:   matchIPNet,
+	}
+)
+
+func matchPort(h model.SHHUser, t *token) bool {
+	var (
+		p1 bool
+		p2 bool
+	)
+	_, port, err := net.SplitHostPort(h.Host())
+	if err != nil {
+		panic("解析ip:port错误")
+	}
+	if port == t.liftOP {
+		p1 = true
+	}
+	p2 = t.OP == equal
+	if p2 {
+		return p1
+	}
+	return !p1
+}
+
+func matchUser(h model.SHHUser, t *token) bool {
+	var (
+		p1 bool
+		p2 bool
+	)
+	if t.liftOP == h.User() {
+		p1 = true
+	}
+	p2 = t.OP == equal
+	if p2 {
+		return p1
+	}
+	return !p1
+}
+
+func matchIP(h model.SHHUser, t *token) bool {
+	var (
+		p1   bool
+		p2   bool
+		mode rune
+	)
+	ipStr, _, err := net.SplitHostPort(h.Host())
+	if err != nil {
+		panic("解析ip:port错误")
+	}
+	ip := net.ParseIP(ipStr)
+	if v, ok := pool.Share.Load("ip_mode"); ok {
+		mode = v.(rune)
+	} else {
+		switch {
+		case strings.ContainsRune(t.liftOP, netKeyword):
+			mode = netKeyword
+		case strings.ContainsRune(t.liftOP, rangeKeyword):
+			mode = rangeKeyword
+		case strings.ContainsRune(t.liftOP, manyKeyword):
+			mode = manyKeyword
+		default:
+			mode = -1
+		}
+		pool.Share.Store("ip_mode", mode)
+	}
+	if fn, ok := mIPm[mode]; ok {
+		p1 = fn(ip, t.liftOP)
+	}
+	p2 = t.OP == equal
+	if p2 {
+		return p1
+	}
+	return !p1
+}
+
+func matchIPSingle(ip net.IP, filstr string) bool {
+	var (
+		tIP net.IP
+	)
+	if v, ok := pool.Share.Load("ip_single"); ok {
+		tIP = v.(net.IP)
+	} else {
+		tIP = net.ParseIP(filstr)
+		pool.Share.Store("ip_single", tIP)
+	}
+	return tIP.Equal(ip)
+}
+
+type (
+	pair struct {
+		start uint8
+		end   uint8
+	}
+	pairs []pair
+
+	ipRange struct {
+		ip      [4]byte
+		idx     uint8
+		handles [4]pairs
+	}
+)
+
+func newIpRange(str string) *ipRange {
+	ipPairs := strings.Split(str, ".")
+	if len(ipPairs) != 4 {
+		panic("错误的ipv4格式")
+	}
+	var (
+		parts   [4]byte
+		handles [4]pairs
+		idx     uint8
+	)
+	for i, v := range ipPairs {
+		if strings.ContainsRune(v, rangeKeyword) || strings.ContainsRune(v, manyKeyword) {
+			p := parseManyRange(v)
+			if p == nil {
+				panic("错误many range 格式")
+			}
+			handles[i] = p
+			idx |= 1 << i
+			continue
+		}
+		t, err := strconv.ParseUint(v, 10, 8)
+		if err != nil {
+			panic("错误的ipv4 格式，不能解析数字")
+		}
+		part := byte(t)
+		parts[i] = part
+	}
+	return &ipRange{
+		ip:      parts,
+		handles: handles,
+		idx:     idx,
+	}
+}
+
+func parseManyRange(str string) pairs {
+	p := make(pairs, 0)
+	ps := strings.Split(str, string(manyKeyword))
+	for _, v := range ps {
+		if strings.ContainsRune(v, rangeKeyword) {
+			part := strings.Split(v, string(rangeKeyword))
+			if len(part) != 2 {
+				return nil
+			}
+			s, err := strconv.ParseUint(part[0], 10, 8)
+			if err != nil {
+				return nil
+			}
+			start := byte(s)
+			e, err := strconv.ParseUint(part[1], 10, 8)
+			if err != nil {
+				return nil
+			}
+			end := byte(e)
+			if start > end {
+				return nil
+			}
+			p = append(p, pair{start: start, end: end})
+			continue
+		}
+		i, err := strconv.ParseUint(v, 10, 8)
+		if err != nil {
+			return nil
+		}
+		_i := byte(i)
+		p = append(p, pair{start: _i, end: _i})
+	}
+	return p
+}
+
+func (p *ipRange) contain(ip net.IP) bool {
+	parts := []byte(ip.To4())
+	for i, v := range parts[:4] {
+		e := p.idx & (1 << i)
+		if e != 0 {
+			if !p.handles[i].contain(v) {
+				return false
+			}
+			continue
+		}
+		if p.ip[i] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func (p *pairs) contain(part byte) bool {
+	for _, v := range *p {
+		if v.start <= part && v.end >= part {
+			return true
+		}
+	}
 	return false
+}
+
+func matchIPManyRange(ip net.IP, filstr string) bool {
+	var (
+		iprange *ipRange
+	)
+	if v, ok := pool.Share.Load("ip_many_range"); ok {
+		iprange = v.(*ipRange)
+	} else {
+		iprange = newIpRange(filstr)
+		pool.Share.Store("ip_many_range", iprange)
+	}
+
+	return iprange.contain(ip)
+}
+
+func matchIPNet(ip net.IP, filstr string) bool {
+	var (
+		ipNET *net.IPNet
+	)
+	if v, ok := pool.Share.Load("ip_net"); ok {
+		ipNET = v.(*net.IPNet)
+	} else {
+		_, _ipNET, err := net.ParseCIDR(filstr)
+		if err != nil {
+			panic("解析ip 网段")
+		}
+		ipNET = _ipNET
+		pool.Share.Store("ip_net", ipNET)
+	}
+	return ipNET.Contains(ip)
 }
 
 func matchExtraInfo(h model.SHHUser, t *token) bool {
