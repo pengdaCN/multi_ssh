@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 // 将路径拆分
@@ -190,13 +191,17 @@ func (t *Terminal) SftpUpdateByReaderWithFunc(filename string, reader io.Reader,
 	return err
 }
 
+var (
+	o sync.Once
+)
+
 func (t *Terminal) sftpReady() {
-	if t.sftpClient == nil {
+	o.Do(func() {
 		var err error
 		t.sftpClient, err = t.GetSftpClient()
 		if err != nil {
 			log.Println("sftp client打开失败", err.Error())
 			panic(err)
 		}
-	}
+	})
 }
