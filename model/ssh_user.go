@@ -3,6 +3,7 @@ package model
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"log"
@@ -15,6 +16,7 @@ type SHHUser interface {
 	User() string
 	Auth() []ssh.AuthMethod
 	Extra() map[string]string
+	Identify() string
 }
 
 type SSHUserByPassphrase struct {
@@ -24,6 +26,15 @@ type SSHUserByPassphrase struct {
 	ExtraField map[string]string
 }
 
+func isRepeat(m map[string]struct{}, user SHHUser) bool {
+	id := user.Identify()
+	if _, ok := m[id]; ok {
+		return true
+	}
+	m[id] = struct{}{}
+	return false
+}
+
 func ReadHosts(fil string) ([]*SSHUserByPassphrase, error) {
 	context, err := ioutil.ReadFile(fil)
 	if err != nil {
@@ -31,17 +42,24 @@ func ReadHosts(fil string) ([]*SSHUserByPassphrase, error) {
 	}
 	read := bufio.NewReader(bytes.NewReader(context))
 	rst := make([]*SSHUserByPassphrase, 0)
+	// 用于选出重复的条目
+	m := make(map[string]struct{})
 	for {
 		line, err := read.ReadString('\n')
 		line = strings.TrimSpace(line)
 		if err != nil {
 			if s := ReadLine(line); s != nil {
-				rst = append(rst, s)
+				// 去除处重复的条目
+				if !isRepeat(m, s) {
+					rst = append(rst, s)
+				}
 			}
 			break
 		}
 		if s := ReadLine(line); s != nil {
-			rst = append(rst, s)
+			if !isRepeat(m, s) {
+				rst = append(rst, s)
+			}
 		}
 	}
 	return rst, nil
@@ -192,4 +210,8 @@ func parseExtraRetMap(str string) map[string]string {
 	}
 END:
 	return rst
+}
+
+func (s *SSHUserByPassphrase) Identify() string {
+	return fmt.Sprintf("SSHUserByPassphrase-%s@%s", s.UserName, s.RemoteHost)
 }
