@@ -196,12 +196,12 @@ var (
 )
 
 func (t *Terminal) sftpReady() {
-	o.Do(func() {
+	if t.sftpClient == nil {
 		var err error
 		t.sftpClient, err = t.GetSftpClient()
 		if err != nil {
 			log.Println("sftp client打开失败", err.Error())
 			panic(err)
 		}
-	})
+	}
 }
