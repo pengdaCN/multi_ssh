@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const version = `0.2.3`
+const version = `0.2.3-1`
 
 var (
 	hosts     string
