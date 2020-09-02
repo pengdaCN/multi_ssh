@@ -139,20 +139,15 @@ func matchIP(h model.SHHUser, t *token) bool {
 		panic("解析ip:port错误")
 	}
 	ip := net.ParseIP(ipStr)
-	if v, ok := pool.Share.Load("ip_mode"); ok {
-		mode = v.(rune)
-	} else {
-		switch {
-		case strings.ContainsRune(t.liftOP, netKeyword):
-			mode = netKeyword
-		case strings.ContainsRune(t.liftOP, rangeKeyword):
-			mode = rangeKeyword
-		case strings.ContainsRune(t.liftOP, manyKeyword):
-			mode = manyKeyword
-		default:
-			mode = -1
-		}
-		pool.Share.Store("ip_mode", mode)
+	switch {
+	case strings.ContainsRune(t.liftOP, netKeyword):
+		mode = netKeyword
+	case strings.ContainsRune(t.liftOP, rangeKeyword):
+		mode = rangeKeyword
+	case strings.ContainsRune(t.liftOP, manyKeyword):
+		mode = manyKeyword
+	default:
+		mode = -1
 	}
 	if fn, ok := mIPm[mode]; ok {
 		p1 = fn(ip, t.liftOP)
@@ -168,11 +163,11 @@ func matchIPSingle(ip net.IP, filstr string) bool {
 	var (
 		tIP net.IP
 	)
-	if v, ok := pool.Share.Load("ip_single"); ok {
+	if v, ok := pool.Share.Load(filstr); ok {
 		tIP = v.(net.IP)
 	} else {
 		tIP = net.ParseIP(filstr)
-		pool.Share.Store("ip_single", tIP)
+		pool.Share.Store(filstr, tIP)
 	}
 	return tIP.Equal(ip)
 }
@@ -290,13 +285,12 @@ func matchIPManyRange(ip net.IP, filstr string) bool {
 	var (
 		iprange *ipRange
 	)
-	if v, ok := pool.Share.Load("ip_many_range"); ok {
+	if v, ok := pool.Share.Load(filstr); ok {
 		iprange = v.(*ipRange)
 	} else {
 		iprange = newIpRange(filstr)
-		pool.Share.Store("ip_many_range", iprange)
+		pool.Share.Store(filstr, iprange)
 	}
-
 	return iprange.contain(ip)
 }
 
@@ -304,7 +298,7 @@ func matchIPNet(ip net.IP, filstr string) bool {
 	var (
 		ipNET *net.IPNet
 	)
-	if v, ok := pool.Share.Load("ip_net"); ok {
+	if v, ok := pool.Share.Load(filterStr); ok {
 		ipNET = v.(*net.IPNet)
 	} else {
 		_, _ipNET, err := net.ParseCIDR(filstr)
@@ -312,7 +306,7 @@ func matchIPNet(ip net.IP, filstr string) bool {
 			panic("解析ip 网段")
 		}
 		ipNET = _ipNET
-		pool.Share.Store("ip_net", ipNET)
+		pool.Share.Store(filterStr, ipNET)
 	}
 	return ipNET.Contains(ip)
 }
