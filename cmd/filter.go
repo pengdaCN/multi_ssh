@@ -298,7 +298,7 @@ func matchIPNet(ip net.IP, filstr string) bool {
 	var (
 		ipNET *net.IPNet
 	)
-	if v, ok := pool.Share.Load(filterStr); ok {
+	if v, ok := pool.Share.Load(filstr); ok {
 		ipNET = v.(*net.IPNet)
 	} else {
 		_, _ipNET, err := net.ParseCIDR(filstr)
@@ -306,7 +306,7 @@ func matchIPNet(ip net.IP, filstr string) bool {
 			panic("解析ip 网段")
 		}
 		ipNET = _ipNET
-		pool.Share.Store(filterStr, ipNET)
+		pool.Share.Store(filstr, ipNET)
 	}
 	return ipNET.Contains(ip)
 }
