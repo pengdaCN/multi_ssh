@@ -14,11 +14,11 @@ type (
 
 func NewTermLTable(term *m_terminal.Terminal, state *lua.LState) *lua.LTable {
 	tab := state.NewTable()
-	state.SetField(tab, "sudo", state.NewFunction(newShell(term)))
+	state.SetField(tab, "shell", state.NewFunction(newShell(term)))
 	state.SetField(tab, "script", state.NewFunction(newScript(term)))
 	state.SetField(tab, "copy", state.NewFunction(newCopy(term)))
 	state.SetField(tab, "out", state.NewFunction(newOut(term)))
-	state.SetField(tab, "outln", state.NewFunction(newOut(term)))
+	state.SetField(tab, "outln", state.NewFunction(newOutLn(term)))
 	state.SetField(tab, "extraInfo", state.NewFunction(newExtra(term)))
 	state.SetField(tab, "hostInfo", state.NewFunction(newHostInfo(term)))
 	state.SetField(tab, "setCode", state.NewFunction(newOutLn(term)))
@@ -33,7 +33,7 @@ func newShell(term *m_terminal.Terminal) lua.LGFunction {
 			cmd  string
 		)
 		args := state.ToTable(1)
-		cmd = args.RawGetInt(1).String()
+		cmd = lvalueToStr(args.RawGetInt(1))
 		sudo = lvalueToBool(args.RawGetString("sudo"))
 		rst := term.Run(sudo, cmd)
 		state.Push(rstToLTable(state, rst))
@@ -50,8 +50,8 @@ func newScript(term *m_terminal.Terminal) lua.LGFunction {
 		)
 		part := state.ToTable(1)
 		sudo = lvalueToBool(part.RawGetString("sudo"))
-		args = part.RawGetString("args").String()
-		path = part.RawGetInt(1).String()
+		args = lvalueToStr(part.RawGetString("args"))
+		path = lvalueToStr(part.RawGetInt(1))
 		if path == "" {
 			panic("required one path")
 		}

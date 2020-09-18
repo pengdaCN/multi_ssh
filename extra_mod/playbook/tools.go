@@ -30,6 +30,17 @@ func lvalueToBool(value lua.LValue) bool {
 	}
 }
 
+func lvalueToStr(value lua.LValue) string {
+	switch value.Type() {
+	case lua.LTNil:
+		return ""
+	case lua.LTString:
+		return value.(lua.LString).String()
+	default:
+		return value.String()
+	}
+}
+
 func rstToLTable(state *lua.LState, p *m_terminal.Result) lua.LValue {
 	tab := state.NewTable()
 	state.SetTable(tab, lua.LString("msg"), lua.LString(p.Msg()))
