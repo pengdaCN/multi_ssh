@@ -6,7 +6,29 @@ import (
 	"multi_ssh/m_terminal"
 	"multi_ssh/tools"
 	"strconv"
+	"strings"
 )
+
+func lvalueToBool(value lua.LValue) bool {
+	switch value.Type() {
+	case lua.LTNil:
+		return false
+	case lua.LTString:
+		s := value.(lua.LString).String()
+		s = strings.ToLower(s)
+		if s == "" || s == "false" {
+			return false
+		} else if s == "true" {
+			return true
+		}
+		return false
+	case lua.LTBool:
+		b := bool(value.(lua.LBool))
+		return b
+	default:
+		return false
+	}
+}
 
 func rstToLTable(state *lua.LState, p *m_terminal.Result) lua.LValue {
 	tab := state.NewTable()

@@ -97,7 +97,7 @@ func (t *Terminal) Script(sudo bool, fil io.Reader, args string) *Result {
 	}
 	var prefix string
 	if sudo {
-		prefix = "sudo -s "
+		prefix = "sudo -i "
 	}
 	rst := t.Run(sudo, fmt.Sprintf(`%sbash /tmp/%s %s`, prefix, filename, args))
 	_ = t.Remove(fmt.Sprintf(`/tmp/%s`, filename))

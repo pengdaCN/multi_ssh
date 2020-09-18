@@ -17,9 +17,11 @@ type SHHUser interface {
 	Auth() []ssh.AuthMethod
 	Extra() map[string]string
 	Identify() string
+	Line() int
 }
 
 type SSHUserByPassphrase struct {
+	line       int
 	RemoteHost string
 	UserName   string
 	Password   string
@@ -44,13 +46,16 @@ func ReadHosts(fil string) ([]*SSHUserByPassphrase, error) {
 	rst := make([]*SSHUserByPassphrase, 0)
 	// 用于选出重复的条目
 	m := make(map[string]struct{})
+	var lineNumber int
 	for {
+		lineNumber++
 		line, err := read.ReadString('\n')
 		line = strings.TrimSpace(line)
 		if err != nil {
 			if s := ReadLine(line); s != nil {
 				// 去除处重复的条目
 				if !isRepeat(m, s) {
+					s.line = lineNumber
 					rst = append(rst, s)
 				}
 			}
@@ -58,6 +63,7 @@ func ReadHosts(fil string) ([]*SSHUserByPassphrase, error) {
 		}
 		if s := ReadLine(line); s != nil {
 			if !isRepeat(m, s) {
+				s.line = lineNumber
 				rst = append(rst, s)
 			}
 		}
@@ -110,6 +116,10 @@ func (s *SSHUserByPassphrase) ParseExtra(str string) bool {
 	}
 	s.ExtraField = m
 	return true
+}
+
+func (s *SSHUserByPassphrase) Line() int {
+	return s.line
 }
 
 var (

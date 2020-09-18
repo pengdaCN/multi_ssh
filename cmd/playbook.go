@@ -39,7 +39,7 @@ var playbookCmd = cobra.Command{
 		finished := eachTerm(terminals, func(term *m_terminal.Terminal) {
 			playbook.Push(term.GetID(), term)
 			co, _ := playbook.VM.NewThread()
-			_, err, _ := playbook.VM.Resume(co, fn, lua.LNumber(term.GetID()))
+			_, err, _ := playbook.VM.Resume(co, fn, playbook.NewTermLTable(term, co))
 			var (
 				msg     string
 				code    int

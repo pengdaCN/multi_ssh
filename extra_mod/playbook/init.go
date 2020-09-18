@@ -10,13 +10,4 @@ var (
 
 func init() {
 	VM = lua.NewState()
-	VM.Register("shell", shell)
-	VM.Register("script", script)
-	VM.Register("copy", cp)
-	VM.Register("extraInfo", extraInfo)
-	VM.Register("hostInfo", hostInfo)
-	VM.Register("out", out)
-	VM.Register("outln", outln)
-	VM.Register("setCode", setCode)
-	VM.Register("setErrInfo", setErrInfo)
 }
