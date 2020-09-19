@@ -11,7 +11,12 @@ import (
 	"strings"
 )
 
+var (
+	playbookEach bool
+)
+
 func init() {
+	playbookCmd.Flags().BoolVar(&playbookEach, "each", false, "使用each方法处理")
 	rootCmd.AddCommand(&playbookCmd)
 }
 
@@ -39,7 +44,7 @@ var playbookCmd = cobra.Command{
 		finished := eachTerm(terminals, func(term *m_terminal.Terminal) {
 			playbook.Push(term.GetID(), term)
 			co, _ := playbook.VM.NewThread()
-			_, err, _ := playbook.VM.Resume(co, fn, playbook.NewTermLTable(term, co))
+			_, err, _ := playbook.VM.Resume(co, fn, playbook.NewLuaTerm(co, term))
 			var (
 				msg     string
 				code    int
