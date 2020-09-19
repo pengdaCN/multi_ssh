@@ -4,8 +4,10 @@ import (
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
 	"multi_ssh/m_terminal"
+	"multi_ssh/tools"
 	"os"
 	"strings"
+	"time"
 )
 
 type (
@@ -23,7 +25,14 @@ func NewTermLTable(term *m_terminal.Terminal, state *lua.LState) *lua.LTable {
 	state.SetField(tab, "hostInfo", state.NewFunction(newHostInfo(term)))
 	state.SetField(tab, "setCode", state.NewFunction(newOutLn(term)))
 	state.SetField(tab, "setErrInfo", state.NewFunction(newSetErrInfo(term)))
+	state.SetField(tab, "sleep", state.NewFunction(luaSleep))
 	return tab
+}
+
+func luaSleep(state *lua.LState) int {
+	second := state.ToInt(1)
+	time.Sleep(time.Duration(second) * time.Second)
+	return 0
 }
 
 func newShell(term *m_terminal.Terminal) lua.LGFunction {
@@ -31,11 +40,18 @@ func newShell(term *m_terminal.Terminal) lua.LGFunction {
 		var (
 			sudo = false
 			cmd  string
+			rst  *m_terminal.Result
 		)
 		args := state.ToTable(1)
 		cmd = lvalueToStr(args.RawGetInt(1))
 		sudo = lvalueToBool(args.RawGetString("sudo"))
-		rst := term.Run(sudo, cmd)
+		ctx := useTimeoutFromLvalue(args.RawGetString("timeout"))
+		tools.WithCancel(ctx, func() {
+			rst = term.Run(sudo, cmd)
+		})
+		if rst == nil {
+			rst = new(m_terminal.Result)
+		}
 		state.Push(rstToLTable(state, rst))
 		return 1
 	}
@@ -47,6 +63,7 @@ func newScript(term *m_terminal.Terminal) lua.LGFunction {
 			sudo = false
 			args string
 			path string
+			rst  *m_terminal.Result
 		)
 		part := state.ToTable(1)
 		sudo = lvalueToBool(part.RawGetString("sudo"))
@@ -59,7 +76,14 @@ func newScript(term *m_terminal.Terminal) lua.LGFunction {
 		if err != nil {
 			panic("script not exists")
 		}
-		state.Push(rstToLTable(state, term.Script(sudo, fil, args)))
+		ctx := useTimeoutFromLvalue(part.RawGetString("timeout"))
+		tools.WithCancel(ctx, func() {
+			rst = term.Script(sudo, fil, args)
+		})
+		if rst == nil {
+			rst = new(m_terminal.Result)
+		}
+		state.Push(rstToLTable(state, rst))
 		return 1
 	}
 }
@@ -71,6 +95,7 @@ func newCopy(term *m_terminal.Terminal) lua.LGFunction {
 			exists = false
 			src    []string
 			dst    string
+			rst    *m_terminal.Result
 			attr   m_terminal.HandleByFile
 		)
 		args := state.ToTable(1)
@@ -108,7 +133,14 @@ func newCopy(term *m_terminal.Terminal) lua.LGFunction {
 				attr = nil
 			}
 		}
-		state.Push(rstToLTable(state, term.Copy(exists, sudo, src, dst, attr)))
+		ctx := useTimeoutFromLvalue(args.RawGetString("timeout"))
+		tools.WithCancel(ctx, func() {
+			rst = term.Copy(exists, sudo, src, dst, attr)
+		})
+		if rst == nil {
+			rst = new(m_terminal.Result)
+		}
+		state.Push(rstToLTable(state, rst))
 		return 1
 	}
 }

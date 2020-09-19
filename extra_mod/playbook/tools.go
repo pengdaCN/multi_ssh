@@ -1,13 +1,32 @@
 package playbook
 
 import (
+	"context"
 	"github.com/pkg/sftp"
 	lua "github.com/yuin/gopher-lua"
 	"multi_ssh/m_terminal"
 	"multi_ssh/tools"
 	"strconv"
 	"strings"
+	"time"
 )
+
+func useTimeoutFromLvalue(value lua.LValue) context.Context {
+	switch value.Type() {
+	case lua.LTNil:
+		return context.Background()
+	case lua.LTNumber:
+		t := value.(lua.LNumber).String()
+		if v, err := strconv.ParseInt(t, 0, 32); err != nil {
+			return context.Background()
+		} else {
+			ctx, _ := context.WithTimeout(context.Background(), time.Second*time.Duration(v))
+			return ctx
+		}
+	default:
+		return context.Background()
+	}
+}
 
 func lvalueToBool(value lua.LValue) bool {
 	switch value.Type() {
