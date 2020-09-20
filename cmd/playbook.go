@@ -11,12 +11,7 @@ import (
 	"strings"
 )
 
-var (
-	playbookEach bool
-)
-
 func init() {
-	playbookCmd.Flags().BoolVar(&playbookEach, "each", false, "使用each方法处理")
 	rootCmd.AddCommand(&playbookCmd)
 }
 

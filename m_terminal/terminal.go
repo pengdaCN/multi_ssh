@@ -27,6 +27,7 @@ type HookFunc func(*Terminal)
 
 type Terminal struct {
 	id            int
+	birthID       int
 	user          model.SHHUser
 	client        *ssh.Client
 	sftpClient    *sftp.Client
@@ -66,6 +67,14 @@ func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
 		client:  client,
 		content: NewContent(),
 	}, nil
+}
+
+func (t *Terminal) SetBirthID(birthID int) {
+	t.birthID = birthID
+}
+
+func (t *Terminal) GetBirthID() int {
+	return t.birthID
 }
 
 func (t *Terminal) SetShare(key string, val interface{}) {

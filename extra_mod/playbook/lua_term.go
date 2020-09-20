@@ -15,10 +15,11 @@ func NewLuaTerm(state *lua.LState, term *m_terminal.Terminal) *lua.LTable {
 	state.SetField(tab, "outln", state.NewFunction(newOutLn(term)))
 	state.SetField(tab, "extraInfo", state.NewFunction(newExtra(term)))
 	state.SetField(tab, "hostInfo", state.NewFunction(newHostInfo(term)))
-	state.SetField(tab, "setCode", state.NewFunction(newOutLn(term)))
+	state.SetField(tab, "setCode", state.NewFunction(newSetCode(term)))
 	state.SetField(tab, "setErrInfo", state.NewFunction(newSetErrInfo(term)))
 	state.SetField(tab, "sleep", state.NewFunction(luaSleep))
 	state.SetField(tab, "hostInfo", initHostInfo(state, term))
+	state.SetField(tab, "iota", lua.LNumber(term.GetBirthID()))
 	return tab
 }
 

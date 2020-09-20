@@ -14,21 +14,6 @@ type (
 	FUNCWithTerm func(*m_terminal.Terminal) lua.LGFunction
 )
 
-func NewTermLTable(term *m_terminal.Terminal, state *lua.LState) *lua.LTable {
-	tab := state.NewTable()
-	state.SetField(tab, "shell", state.NewFunction(newShell(term)))
-	state.SetField(tab, "script", state.NewFunction(newScript(term)))
-	state.SetField(tab, "copy", state.NewFunction(newCopy(term)))
-	state.SetField(tab, "out", state.NewFunction(newOut(term)))
-	state.SetField(tab, "outln", state.NewFunction(newOutLn(term)))
-	state.SetField(tab, "extraInfo", state.NewFunction(newExtra(term)))
-	state.SetField(tab, "hostInfo", state.NewFunction(newHostInfo(term)))
-	state.SetField(tab, "setCode", state.NewFunction(newOutLn(term)))
-	state.SetField(tab, "setErrInfo", state.NewFunction(newSetErrInfo(term)))
-	state.SetField(tab, "sleep", state.NewFunction(luaSleep))
-	return tab
-}
-
 func luaSleep(state *lua.LState) int {
 	second := state.ToInt(1)
 	time.Sleep(time.Duration(second) * time.Second)

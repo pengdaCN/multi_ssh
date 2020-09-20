@@ -6,11 +6,16 @@ import (
 	"multi_ssh/m_terminal"
 	"multi_ssh/model"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
 
 const version = `0.2.7`
+
+type (
+	userSlice []model.SHHUser
+)
 
 var (
 	hosts     string
@@ -22,7 +27,7 @@ var (
 
 var (
 	terminals []*m_terminal.Terminal
-	users     []model.SHHUser
+	users     userSlice
 	timeout   time.Duration
 )
 
@@ -33,6 +38,18 @@ func init() {
 	rootCmd.Flags().StringVarP(&filterStr, "filter", "F", "", "使用格式选择需要执行的主机")
 	rootCmd.Flags().BoolVarP(&preInfo, "uinfo", "", true, "是否在对主机操作之前获取他的信息")
 	rootCmd.Flags().DurationVarP(&timeout, "wait", "w", -1, "设置超时，默认不永不超时")
+}
+
+func (u userSlice) Less(v1, v2 int) bool {
+	return u[v1].Line() < u[v2].Line()
+}
+
+func (u userSlice) Swap(v1, v2 int) {
+	u[v1], u[v2] = u[v2], u[v1]
+}
+
+func (u userSlice) Len() int {
+	return len(u)
 }
 
 var rootCmd = cobra.Command{
@@ -62,11 +79,13 @@ var rootCmd = cobra.Command{
 		if filterStr != "" {
 			users = filters(users, filterStr)
 		}
+		// 使用行号进行排序
+		sort.Sort(users)
 		ch := make(chan *m_terminal.Terminal, 0)
 		var w sync.WaitGroup
-		for _, u := range users {
+		for i, u := range users {
 			w.Add(1)
-			go func(user model.SHHUser) {
+			go func(user model.SHHUser, bi int) {
 				defer w.Done()
 				c, err := m_terminal.DefaultWithPassphrase(user)
 				if err != nil {
@@ -78,8 +97,9 @@ var rootCmd = cobra.Command{
 				if preInfo {
 					m_terminal.GetRemoteHostInfo(c)
 				}
+				c.SetBirthID(bi + 1)
 				ch <- c
-			}(u)
+			}(u, i)
 		}
 		var w2 sync.WaitGroup
 		w2.Add(1)
