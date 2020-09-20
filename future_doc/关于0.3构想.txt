@@ -1,0 +1,11 @@
+multi_ssh 0.3版本主要优化copy功能的效率与copy功能的增强
+
+0.3 copy功能计划增强添加如下
+    1. copy文件使用http协议实现，实现大文件拷贝，断点续传
+        为了安全，在实现http下载是，加入简答的http认证功能，使用bashauth实现，当然，该功能可以通过--no-auth选项关闭
+    2. copy文件完整拷贝完文件后文件属性的参数的设置
+    3. copy文件可以使用--sudo，--exists选项实现拷贝到任意位置
+0.3 copy实现缺点
+    1. 使用当前copy功能的实现，会依赖续wget或者curl
+关于 copy实现缺点优化方案
+    1. multi_ssh 在连接时检查wget或curl其中之一是否存在，若不存在，则使用当前发型版安装wget或curl，若不能安装则报出错误，错误为required wget or curl
