@@ -71,10 +71,10 @@ func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
 
 // 使用setbirth设置birthID 时，若修改的id小于0,则不修改，若birthID 已经设置则不修改
 func (t *Terminal) SetBirthID(birthID int) {
-	if t.birthID <= 0 {
+	if t.birthID > 0 {
 		return
 	}
-	if t.birthID != 0 {
+	if birthID <= 0 {
 		return
 	}
 	t.birthID = birthID
