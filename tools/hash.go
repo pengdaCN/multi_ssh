@@ -3,12 +3,12 @@ package tools
 import (
 	"crypto/md5"
 	"encoding/base64"
-	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 )
 
-const Gb = 1 << 10*3
+const Gb = 1 << (10 * 3)
 
 func HashFile(fileName string) (hStr string, err error) {
 	fStat, err := os.Stat(fileName)
@@ -16,10 +16,8 @@ func HashFile(fileName string) (hStr string, err error) {
 		return "", err
 	}
 	if fStat.Size() > 10*Gb {
-		j, err := json.Marshal(fStat)
-		if err != nil {
-			return "", err
-		}
+		j := []byte(fmt.Sprintf("%s %d %s %s", fStat.Name(), fStat.Size(), fStat.Mode(), fStat.ModTime()))
+
 		h := md5.Sum(j)
 		return base64.StdEncoding.EncodeToString(h[:]), nil
 	}
