@@ -6,15 +6,52 @@ import (
 	"errors"
 	"fmt"
 	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
 	"io"
 	"io/ioutil"
 	"log"
+	"multi_ssh/common"
 	"multi_ssh/extra_mod/host_info"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 )
+
+type (
+	CopyOption struct {
+		Exists bool
+		Sudo   bool
+		Uid    int
+		Gid    int
+		Mode   string
+	}
+)
+
+// 使用http协议实现，注册断点续传，支持修改传入文件名，支持修改拷贝后文件熟悉，uid，gid，权限等操作
+func (t *Terminal) Copy2(src []string, dst string, opt CopyOption) *Result {
+	common.Serv.AddFile(src...)
+	if opt.Exists {
+		_, err := t.run(false, fmt.Sprintf("test -d %s", dst))
+		if err == nil {
+			goto exist
+		}
+		if v, ok := err.(*ssh.ExitError); ok {
+			if v.ExitStatus() != 0 {
+				r := t.Script(opt.Sudo, strings.NewReader(fmt.Sprintf("mkdir -p %s", dst)), "")
+				if r.code != 0 {
+					return r
+				}
+			}
+		}
+	}
+exist:
+	r := t.Script(opt.Sudo, strings.NewReader(fmt.Sprintf("cd %s && wget ", dst)), "")
+	if r.code != 0 {
+		return r
+	}
+	return nil
+}
 
 // 将路径拆分
 // @path 要拆分的路径

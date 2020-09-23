@@ -25,7 +25,7 @@ var playbookCmd = cobra.Command{
 		ch := make(chan *execResult, 0)
 		outFinish := output(ch, outFormat, os.Stdout)
 		if err := playbook.VM.DoFile(args[0]); err != nil {
-			log.Println(errors.New("错误文件位置"))
+			log.Println(errors.WithStack(err))
 			return
 		}
 		var (
@@ -38,8 +38,8 @@ var playbookCmd = cobra.Command{
 		}
 		finished := eachTerm(terminals, func(term *m_terminal.Terminal) {
 			playbook.Push(term.GetID(), term)
-			co, _ := playbook.VM.NewThread()
-			_, err, _ := playbook.VM.Resume(co, fn, playbook.NewLuaTerm(co, term))
+			co, cancel := playbook.VM.NewThread()
+			_, err, _ := playbook.VM.Resume(co, fn, playbook.NewLuaTerm(co, term, cancel))
 			var (
 				msg     string
 				code    int

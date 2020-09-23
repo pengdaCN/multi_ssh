@@ -1,12 +1,13 @@
 package playbook
 
 import (
+	"context"
 	lua "github.com/yuin/gopher-lua"
 	"multi_ssh/m_terminal"
 	"net"
 )
 
-func NewLuaTerm(state *lua.LState, term *m_terminal.Terminal) *lua.LTable {
+func NewLuaTerm(state *lua.LState, term *m_terminal.Terminal, cancel context.CancelFunc) *lua.LTable {
 	tab := state.NewTable()
 	state.SetField(tab, "shell", state.NewFunction(newShell(term)))
 	state.SetField(tab, "script", state.NewFunction(newScript(term)))
@@ -20,6 +21,7 @@ func NewLuaTerm(state *lua.LState, term *m_terminal.Terminal) *lua.LTable {
 	state.SetField(tab, "sleep", state.NewFunction(luaSleep))
 	state.SetField(tab, "hostInfo", initHostInfo(state, term))
 	state.SetField(tab, "iota", lua.LNumber(term.GetBirthID()))
+	state.SetField(tab, "exit", state.NewFunction(newExit(cancel)))
 	return tab
 }
 

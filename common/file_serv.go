@@ -17,16 +17,36 @@ const (
 	fileServPrefix = "/__multi_ssh__/resource/static/"
 )
 
+var (
+	Serv *fileServe
+)
+
+func init() {
+	Serv = NewFileServe()
+}
+
 type fileServe struct {
 	shareFile map[string]string
 	listen    net.Listener
-	closed    bool
+	started   bool
 	mu        sync.RWMutex
 	serve     http.Server
+	ips       []*net.IPNet
+}
+
+func NewFileServe() *fileServe {
+	ips, err := tools.ExternalIP()
+	if err != nil {
+		panic(err)
+	}
+	return &fileServe{
+		ips:       ips,
+		shareFile: make(map[string]string),
+	}
 }
 
 func (f *fileServe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if ! strings.HasPrefix(r.URL.Path, fileServPrefix) {
+	if !strings.HasPrefix(r.URL.Path, fileServPrefix) {
 		http.NotFound(w, r)
 		return
 	}
@@ -61,9 +81,6 @@ func (f *fileServe) containFile(fil string) bool {
 func (f *fileServe) AddFile(str ...string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.shareFile == nil {
-		f.shareFile = make(map[string]string)
-	}
 	for _, v := range str {
 		filName := filepath.Base(v)
 		f.shareFile[filName] = v
@@ -73,7 +90,7 @@ func (f *fileServe) AddFile(str ...string) {
 func (f *fileServe) Start() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if !f.closed {
+	if f.started {
 		return
 	}
 	f.listen, _ = net.Listen("tcp", "0.0.0.0:0")
@@ -83,16 +100,37 @@ func (f *fileServe) Start() {
 	go func() {
 		_ = f.serve.Serve(f.listen)
 	}()
-	f.closed = false
+	f.started = true
 }
 
 func (f *fileServe) Stop() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	_ = f.serve.Shutdown(context.Background())
-	f.closed = true
+	if f.started {
+		_ = f.serve.Shutdown(context.Background())
+		f.started = false
+	}
 }
 
-func GetUrl(str string) string {
+func (f *fileServe) GetUrl(ip net.IP, str string) string {
+	for _, v := range f.ips {
+		if v.Contains(ip) {
+			return fmt.Sprintf(
+				"http://%s:%d%s%s",
+				v.IP.String(),
+				f.listen.Addr().(*net.TCPAddr).Port,
+				fileServPrefix,
+				str,
+			)
+		}
+	}
+	return ""
+}
 
+func (f *fileServe) GetAllUrl(ip net.IP) []string {
+	r := make([]string, 0, len(f.shareFile))
+	for k, _ := range f.shareFile {
+		r = append(r, f.GetUrl(ip, k))
+	}
+	return r
 }

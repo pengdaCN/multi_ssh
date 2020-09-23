@@ -1,8 +1,10 @@
 package playbook
 
 import (
+	"context"
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
+	"io"
 	"multi_ssh/m_terminal"
 	"multi_ssh/tools"
 	"os"
@@ -48,22 +50,31 @@ func newScript(term *m_terminal.Terminal) lua.LGFunction {
 			sudo = false
 			args string
 			path string
+			text string
+			read io.Reader
 			rst  *m_terminal.Result
 		)
 		part := state.ToTable(1)
 		sudo = lvalueToBool(part.RawGetString("sudo"))
 		args = lvalueToStr(part.RawGetString("args"))
-		path = lvalueToStr(part.RawGetInt(1))
-		if path == "" {
-			panic("required one path")
-		}
-		fil, err := os.Open(path)
-		if err != nil {
-			panic("script not exists")
+		// 若有text选项，则优先使用text选项内容作为脚本执行
+		text = lvalueToStr(part.RawGetString("text"))
+		if text == "" {
+			path = lvalueToStr(part.RawGetInt(1))
+			if path == "" {
+				panic("required one path")
+			}
+			var err error
+			read, err = os.Open(path)
+			if err != nil {
+				panic("script not exists")
+			}
+		} else {
+			read = strings.NewReader(text)
 		}
 		ctx := useTimeoutFromLvalue(part.RawGetString("timeout"))
 		tools.WithCancel(ctx, func() {
-			rst = term.Script(sudo, fil, args)
+			rst = term.Script(sudo, read, args)
 		})
 		if rst == nil {
 			rst = new(m_terminal.Result)
@@ -220,6 +231,13 @@ func newSetErrInfo(term *m_terminal.Terminal) lua.LGFunction {
 		errInfo := state.ToString(2)
 		term.SetShare(Code, code)
 		term.SetShare(ErrInfo, errInfo)
+		return 0
+	}
+}
+
+func newExit(cancel context.CancelFunc) lua.LGFunction {
+	return func(state *lua.LState) int {
+		cancel()
 		return 0
 	}
 }
