@@ -46,7 +46,7 @@ var playbookCmd = cobra.Command{
 				errInfo string
 			)
 			if err != nil {
-				log.Println(err.Error())
+				log.Println("VM: ", err.Error())
 			}
 			out, ok := term.GetOnceShare(playbook.OutKey)
 			if ok {

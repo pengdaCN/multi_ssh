@@ -33,7 +33,7 @@ func initHostInfo(state *lua.LState, term *m_terminal.Terminal) *lua.LTable {
 	}
 	hostInfo.RawSetString("line", lua.LNumber(s.Line()))
 	ip, port, err := net.SplitHostPort(s.Host())
-	if err != nil {
+	if err == nil {
 		hostInfo.RawSetString("ip", lua.LString(ip))
 		hostInfo.RawSetString("port", lua.LString(port))
 	}

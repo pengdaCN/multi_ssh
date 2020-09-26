@@ -17,14 +17,6 @@ const (
 	fileServPrefix = "/__multi_ssh__/resource/static/"
 )
 
-var (
-	Serv *fileServe
-)
-
-func init() {
-	Serv = NewFileServe()
-}
-
 type fileServe struct {
 	shareFile map[string]string
 	listen    net.Listener
