@@ -12,8 +12,8 @@ const (
 	unknown op = iota
 	equal
 	noEqual
-	borderSign = `'"`
-	chgWord    = '\\'
+	borderSymbol = `'"`
+	chgWord      = '\\'
 )
 
 var (
@@ -381,12 +381,13 @@ func parseFilter(str string) []piece {
 			}
 			panic("错误的op")
 		case step3:
-			if strings.ContainsRune(borderSign, v) {
+			if strings.ContainsRune(borderSymbol, v) {
 				border = v
 				state = step4
 				continue
+			} else {
+				border = ' '
 			}
-			panic("错误的border符号")
 		case step4:
 			if v == chgWord {
 				state = step5

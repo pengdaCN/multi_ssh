@@ -9,7 +9,10 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"multi_ssh/common"
 	"multi_ssh/extra_mod/host_info"
+	"net"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -24,7 +27,70 @@ type (
 		Gid    int
 		Mode   string
 	}
+	CopyMode struct {
+		Gid  int
+		Uid  int
+		Mode os.FileMode
+	}
+	HttpDownloader int
 )
+
+const (
+	Wget HttpDownloader = iota
+	Curl
+	Disable
+)
+
+var (
+	hdMethod = map[HttpDownloader]string{
+		Wget: "wget -c %s -O %s",
+		Curl: "curl -C %s -O %s",
+	}
+)
+
+func (h HttpDownloader) String() string {
+	switch h {
+	case Wget:
+		return "wget"
+	case Curl:
+		return "curl"
+	case Disable:
+		return "DISABLE"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (h HttpDownloader) buildUrl(url, filename string) string {
+	if v, ok := hdMethod[h]; ok {
+		return fmt.Sprintf(v, url, filename)
+	}
+	return ""
+}
+
+func (t *Terminal) dependEnvForHttpDownload() HttpDownloader {
+	if r := t.Run(false, "which wget"); r.code == 0 {
+		return Wget
+	}
+	if r := t.Run(false, "which curl"); r.code == 0 {
+		return Curl
+	}
+	return Disable
+}
+
+func (t *Terminal) copyOnHttp(src []string, tar string, c CopyMode) *Result {
+	//downloader := t.dependEnvForHttpDownload()
+	u := t.GetUser()
+	ip, _, err := net.SplitHostPort(u.Host())
+	if err != nil {
+		panic("解析ip错误")
+	}
+	urls := common.DefaultFileServe.AddFileRetUrl(net.ParseIP(ip), src)
+	for _, _ = range urls {
+		//downloader.buildUrl()
+	}
+	return nil
+}
 
 // 将路径拆分
 // @path 要拆分的路径

@@ -92,6 +92,12 @@ func mapToLTable(src *lua.LState, m map[string]string) *lua.LTable {
 	return tab
 }
 
+func strSliceToTable(table *lua.LTable, arr []string) {
+	for i, v := range arr {
+		table.Insert(i+1, lua.LString(v))
+	}
+}
+
 func buildHandleByFileWithLTable(src *lua.LTable) m_terminal.HandleByFile {
 	m := lTableToMapStrLValue(src)
 	var (

@@ -10,4 +10,16 @@ var (
 
 func init() {
 	VM = lua.NewState()
+	tools := VM.NewTable()
+	VM.SetGlobal("tools", tools)
+	{
+		str := VM.NewTable()
+		tools.RawSetString("str", str)
+		initStr(VM, str)
+	}
+	{
+		re := VM.NewTable()
+		tools.RawSetString("re", re)
+		initRe(VM, re)
+	}
 }
