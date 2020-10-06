@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -28,7 +27,8 @@ type fileServe struct {
 }
 
 var (
-	DefaultFileServe *fileServe = NewFileServe()
+	o                sync.Once
+	DefaultFileServe = NewFileServe()
 )
 
 func NewFileServe() *fileServe {
@@ -88,14 +88,24 @@ func (f *fileServe) getFile(fil string) string {
 
 func (f *fileServe) addFile(file string) {
 	if _, ok := f.shareFile[file]; !ok {
-		f.shareFile[file] = filepath.Base(file)
-		f.fileMap[f.shareFile[file]] = file
+		var n string
+		for {
+			n = tools.GenerateRandomStr(20)
+			if _, ok := f.fileMap[n]; !ok {
+				break
+			}
+		}
+		f.shareFile[file] = n
+		f.fileMap[n] = file
 	} else {
 		return
 	}
 }
 
 func (f *fileServe) AddFile(str ...string) {
+	o.Do(func() {
+		f.Start()
+	})
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, v := range str {
@@ -143,18 +153,18 @@ func (f *fileServe) buildUrl(ip net.IP, str string) string {
 	return ""
 }
 
-func (f *fileServe) getUrls(ip net.IP, files []string) (rst []string) {
-	for _, v := range files {
-		s := f.buildUrl(ip, f.shareFile[v])
-		rst = append(rst, s)
-	}
-	return
+func (f *fileServe) Exists(filename string) bool {
+	f.mu.RLock()
+	_, ok := f.shareFile[filename]
+	f.mu.RUnlock()
+	return ok
 }
 
-func (f *fileServe) AddFileRetUrl(ip net.IP, files []string) (rst []string) {
-	f.AddFile(files...)
-	f.mu.RLock()
-	rst = f.getUrls(ip, files)
-	f.mu.RUnlock()
+func (f *fileServe) GetUrl(ip net.IP, filename string) (str string) {
+	if f.Exists(filename) {
+		f.mu.RLock()
+		str = f.buildUrl(ip, f.shareFile[filename])
+		f.mu.RUnlock()
+	}
 	return
 }

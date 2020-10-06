@@ -13,9 +13,10 @@ func ExternalIP() (ips []*net.IPNet, err error) {
 		if v.Flags&net.FlagUp != net.FlagUp {
 			continue
 		}
-		if v.Flags&net.FlagLoopback == net.FlagLoopback {
-			continue
-		}
+		// 允许本地回环地址
+		//if v.Flags&net.FlagLoopback == net.FlagLoopback {
+		//	continue
+		//}
 		addrs, err := v.Addrs()
 		if err != nil {
 			continue

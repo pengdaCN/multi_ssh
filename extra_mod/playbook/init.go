@@ -12,6 +12,7 @@ func init() {
 	VM = lua.NewState()
 	tools := VM.NewTable()
 	VM.SetGlobal("tools", tools)
+	tools.RawSetString("sleep", VM.NewFunction(luaSleep))
 	{
 		str := VM.NewTable()
 		tools.RawSetString("str", str)

@@ -107,7 +107,7 @@ func (t *Terminal) pressCmd(cmd string) {
 
 func (t *Terminal) Script(sudo bool, fil io.Reader, args string) *Result {
 	filename := fmt.Sprintf(`__multi_ssh__.%s.sh`, tools.GenerateRandomStr(10))
-	err := t.SftpUpdateByReaderWithFunc(filename, fil, `/tmp`, nil)
+	err := t.SftpUpdateByReaderWithFunc(filename, fil, `/tmp`)
 	if err != nil {
 		return buildRstByErr(err)
 	}
@@ -133,9 +133,10 @@ func (t *Terminal) Run(sudo bool, cmd string) *Result {
 	for ; t.preIndex < uint8(len(t.preHook)); t.preIndex++ {
 		t.preHook[t.preIndex](t)
 	}
-	bs, err := t.run(sudo, t.currentCmd)
+	bs, stdout, stderr, err := t.run(sudo, t.currentCmd)
 	str := string(bs)
 	rst := buildRst(str, err)
+	rst.stdout, rst.stderr = string(stdout), string(stderr)
 	t.content.result = rst
 	for ; t.postIndex < uint8(len(t.postHook)); t.postIndex++ {
 		t.postHook[t.postIndex](t)
@@ -143,13 +144,13 @@ func (t *Terminal) Run(sudo bool, cmd string) *Result {
 	return rst
 }
 
-func (t *Terminal) run(sudo bool, cmd string) ([]byte, error) {
+func (t *Terminal) run(sudo bool, cmd string) ([]byte, []byte, []byte, error) {
 	session, err := t.NewSession()
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	err = session.Run(sudo, cmd)
-	return session.rst, err
+	return session.rst, session.stdout, session.stderr, err
 }
 
 func (t *Terminal) GetSessionWithTerm() (*ssh.Session, error) {

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const version = `0.2.9`
+const version = `0.3-beta`
 
 type (
 	userSlice []model.SHHUser

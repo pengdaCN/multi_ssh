@@ -92,7 +92,6 @@ func newCopy(term *m_terminal.Terminal) lua.LGFunction {
 			src    []string
 			dst    string
 			rst    *m_terminal.Result
-			attr   m_terminal.HandleByFile
 		)
 		args := state.ToTable(1)
 		sudo = lvalueToBool(args.RawGetString("sudo"))
@@ -117,21 +116,21 @@ func newCopy(term *m_terminal.Terminal) lua.LGFunction {
 				panic("required dst path")
 			}
 		}
-		{
-			t := args.RawGetString("attr")
-			switch t.Type() {
-			case lua.LTNil:
-				attr = nil
-			case lua.LTTable:
-				tab := t.(*lua.LTable)
-				attr = buildHandleByFileWithLTable(tab)
-			default:
-				attr = nil
-			}
-		}
+		//{
+		//	t := args.RawGetString("attr")
+		//	switch t.Type() {
+		//	case lua.LTNil:
+		//		attr = nil
+		//	case lua.LTTable:
+		//		tab := t.(*lua.LTable)
+		//		attr = buildHandleByFileWithLTable(tab)
+		//	default:
+		//		attr = nil
+		//	}
+		//}
 		ctx := useTimeoutFromLvalue(args.RawGetString("timeout"))
 		tools.WithCancel(ctx, func() {
-			rst = term.Copy(exists, sudo, src, dst, attr)
+			rst = term.Copy(exists, sudo, src, dst)
 		})
 		if rst == nil {
 			rst = new(m_terminal.Result)

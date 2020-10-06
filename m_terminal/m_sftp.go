@@ -78,18 +78,40 @@ func (t *Terminal) dependEnvForHttpDownload() HttpDownloader {
 	return Disable
 }
 
-func (t *Terminal) copyOnHttp(src []string, tar string, c CopyMode) *Result {
-	//downloader := t.dependEnvForHttpDownload()
+// TODO 后续完善
+func buildSetModeWithCopyMode(c CopyMode) string {
+	var cmd string
+	if c.Mode != 0 {
+		cmd += fmt.Sprintf("chmod ")
+	}
+	return ""
+}
+
+func (t *Terminal) copyOnHttp(sudo bool, src []string, tar string, c *CopyMode) *Result {
+	downloader := t.dependEnvForHttpDownload()
 	u := t.GetUser()
 	ip, _, err := net.SplitHostPort(u.Host())
 	if err != nil {
 		panic("解析ip错误")
 	}
-	urls := common.DefaultFileServe.AddFileRetUrl(net.ParseIP(ip), src)
-	for _, _ = range urls {
-		//downloader.buildUrl()
+	common.DefaultFileServe.AddFile(src...)
+	for _, v := range src {
+		url := common.DefaultFileServe.GetUrl(net.ParseIP(ip), v)
+		if url == "" {
+			return buildErrWithText(fmt.Sprintf("file %s get url faild", v))
+		}
+		cmd := downloader.buildUrl(url, path.Join(tar, path.Base(v)))
+		var _sudo string
+		if sudo {
+			_sudo = "sudo "
+		}
+		r := t.Run(sudo, fmt.Sprintf("%s%s", _sudo, cmd))
+		if r.err != nil {
+			return r
+		}
 	}
-	return nil
+	// TODO 后续添加权限gid，uid设置的功能
+	return buildRstWithOK()
 }
 
 // 将路径拆分
@@ -126,10 +148,11 @@ func (t *Terminal) expandDir(path string) (string, bool) {
 	return filepath.Join(dirs...), true
 }
 
+// TODO 后续添加权限设置功能
 //@exists 参数为true，上传的目录不存在就创建
 //@sudo 参数为true，上传放置在任何root可以方式目录
 //@fn 对上传文件设置额外操作
-func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string, fn HandleByFile) *Result {
+func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string) *Result {
 	info, _ := t.GetContent().GetHostInfo()
 	expandPath, _ := t.expandDir(remotePath)
 	if exist {
@@ -140,29 +163,31 @@ func (t *Terminal) Copy(exist, sudo bool, srcPaths []string, remotePath string, 
 	}
 	if sudo {
 		if !inRange(info, remotePath) {
-			err := t.SftpUpdates(srcPaths, "/tmp", fn)
-			if err != nil {
-				return buildRstByErr(err)
-			}
-			filenames := make([]string, 0, len(srcPaths))
-			for i := 0; i < len(srcPaths); i++ {
-				filenames = append(filenames, filepath.Base(srcPaths[i]))
-			}
-			if len(filenames) < 1 {
-				_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/%s /%s`, filenames[0], expandPath))
-				if err != nil {
-					return buildRstByErr(err)
-				}
-			} else {
-				_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/{%s} %s`, strings.Join(filenames, ","), expandPath))
-				if err != nil {
-					return buildRstByErr(err)
-				}
-			}
-			return buildRstWithOK()
+			//err := t.SftpUpdates(srcPaths, "/tmp", fn)
+			//if err != nil {
+			//	return buildRstByErr(err)
+			//}
+			//filenames := make([]string, 0, len(srcPaths))
+			//for i := 0; i < len(srcPaths); i++ {
+			//	filenames = append(filenames, filepath.Base(srcPaths[i]))
+			//}
+			//if len(filenames) < 1 {
+			//	_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/%s /%s`, filenames[0], expandPath))
+			//	if err != nil {
+			//		return buildRstByErr(err)
+			//	}
+			//} else {
+			//	_, err := t.run(sudo, fmt.Sprintf(`sudo mv /tmp/{%s} %s`, strings.Join(filenames, ","), expandPath))
+			//	if err != nil {
+			//		return buildRstByErr(err)
+			//	}
+			//}
+			//return buildRstWithOK()
+			r := t.copyOnHttp(sudo, srcPaths, remotePath, nil)
+			return r
 		}
 	}
-	err := t.SftpUpdates(srcPaths, expandPath, fn)
+	err := t.SftpUpdates(srcPaths, expandPath)
 	return buildRstByErr(err)
 }
 
@@ -172,10 +197,10 @@ func exists(term *Terminal, sudo bool, remotePath string) error {
 	if sudo {
 		prefix = "sudo"
 	}
-	_, err := term.run(sudo, fmt.Sprintf(`%s test -d %s`, prefix, remotePath))
-	if err != nil {
-		_, err := term.run(sudo, fmt.Sprintf(`%s mkdir -p %s`, prefix, remotePath))
-		if err != nil {
+	r := term.Run(sudo, fmt.Sprintf(`%s test -d %s`, prefix, remotePath))
+	if r.Err() != nil {
+		r := term.Run(sudo, fmt.Sprintf(`%s mkdir -p %s`, prefix, remotePath))
+		if r.Err() != nil {
 			return errors.New("copy 时创建目录失败")
 		}
 	}
@@ -206,7 +231,7 @@ func (t *Terminal) Remove(path string) error {
 	return t.sftpClient.Remove(path)
 }
 
-type HandleByFile func(*sftp.File) error
+//type HandleByFile func(*sftp.File) error
 
 func (t *Terminal) GetSftpClient() (*sftp.Client, error) {
 	return sftp.NewClient(t.client)
@@ -224,9 +249,9 @@ func (t *Terminal) SftpOpen(path string) ([]byte, error) {
 	return ioutil.ReadAll(b)
 }
 
-func (t *Terminal) SftpUpdates(srcPaths []string, remotePath string, fn HandleByFile) error {
+func (t *Terminal) SftpUpdates(srcPaths []string, remotePath string) error {
 	for _, s := range srcPaths {
-		err := t.SftpUpdate(s, remotePath, fn)
+		err := t.SftpUpdate(s, remotePath)
 		if err != nil {
 			return err
 		}
@@ -234,17 +259,17 @@ func (t *Terminal) SftpUpdates(srcPaths []string, remotePath string, fn HandleBy
 	return nil
 }
 
-func (t *Terminal) SftpUpdate(_path, remotePath string, fn HandleByFile) error {
+func (t *Terminal) SftpUpdate(_path, remotePath string) error {
 	b, err := ioutil.ReadFile(_path)
 	if err != nil {
 		panic(err)
 	}
 	rd := bytes.NewReader(b)
 	filename := path.Base(_path)
-	return t.SftpUpdateByReaderWithFunc(filename, rd, remotePath, fn)
+	return t.SftpUpdateByReaderWithFunc(filename, rd, remotePath)
 }
 
-func (t *Terminal) SftpUpdateByReaderWithFunc(filename string, reader io.Reader, remotePath string, fn HandleByFile) error {
+func (t *Terminal) SftpUpdateByReaderWithFunc(filename string, reader io.Reader, remotePath string) error {
 	t.sftpReady()
 	f, err := t.sftpClient.Create(path.Join(remotePath, filename))
 	defer func() {
@@ -257,12 +282,6 @@ func (t *Terminal) SftpUpdateByReaderWithFunc(filename string, reader io.Reader,
 	}
 	w := bufio.NewWriter(f)
 	_, err = w.ReadFrom(reader)
-	if err == nil && fn != nil {
-		err := fn(f)
-		if err != nil {
-			return err
-		}
-	}
 	return err
 }
 

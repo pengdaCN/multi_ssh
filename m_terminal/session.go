@@ -13,6 +13,8 @@ type TermSession struct {
 	*ssh.Session
 	TermStdin io.WriteCloser
 	rst       []byte
+	stdout    []byte
+	stderr    []byte
 	uinfo     model.SHHUser
 }
 
@@ -57,6 +59,7 @@ func (s *TermSession) Run(enableSudo bool, cmd string) error {
 					continue
 				}
 				s.rst = append(s.rst, o...)
+				s.stdout = append(s.stdout, o...)
 				if enableSudo {
 					if err := sudo(s.uinfo, o, s.TermStdin); err != nil {
 						log.Println("sudo执行错误", err)
@@ -69,6 +72,7 @@ func (s *TermSession) Run(enableSudo bool, cmd string) error {
 					continue
 				}
 				s.rst = append(s.rst, o2...)
+				s.stderr = append(s.stderr, o2...)
 			}
 		}
 	}()

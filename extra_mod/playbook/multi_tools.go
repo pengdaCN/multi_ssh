@@ -7,12 +7,14 @@ import (
 )
 
 func initStr(state *lua.LState, table *lua.LTable) {
-	table.RawSetString("split", state.NewFunction(split))
-	table.RawSetString("hasPrefix", state.NewFunction(hasPrefix))
-	table.RawSetString("hasSuffix", state.NewFunction(hasSuffix))
+	table.RawSetString("split", state.NewFunction(strSplit))
+	table.RawSetString("hasPrefix", state.NewFunction(strHasPrefix))
+	table.RawSetString("hasSuffix", state.NewFunction(strHasSuffix))
+	table.RawSetString("trim", state.NewFunction(strTrimSpace))
+	table.RawSetString("replace", state.NewFunction(strReplace))
 }
 
-func split(state *lua.LState) int {
+func strSplit(state *lua.LState) int {
 	arr := state.NewTable()
 	defer func() {
 		state.Push(arr)
@@ -36,7 +38,7 @@ func split(state *lua.LState) int {
 	return 1
 }
 
-func hasPrefix(state *lua.LState) int {
+func strHasPrefix(state *lua.LState) int {
 	var (
 		str    string
 		prefix string
@@ -48,7 +50,7 @@ func hasPrefix(state *lua.LState) int {
 	return 1
 }
 
-func hasSuffix(state *lua.LState) int {
+func strHasSuffix(state *lua.LState) int {
 	var (
 		str    string
 		suffix string
@@ -60,8 +62,45 @@ func hasSuffix(state *lua.LState) int {
 	return 1
 }
 
+func strTrimSpace(state *lua.LState) int {
+	var (
+		str string
+	)
+	str = state.ToString(1)
+	newStr := strings.TrimSpace(str)
+	state.Push(lua.LString(newStr))
+	return 1
+}
+
+func strReplace(state *lua.LState) int {
+	var (
+		str   string
+		old   string
+		n     string
+		count int
+	)
+	str = state.ToString(1)
+	old = state.ToString(2)
+	n = state.ToString(3)
+	{
+		val := state.Get(4)
+		switch val.Type() {
+		case lua.LTNil:
+			count = -1
+		case lua.LTNumber:
+			m := val.(lua.LNumber)
+			count = int(m)
+		}
+	}
+	_newStr := strings.Replace(str, old, n, count)
+	state.Push(lua.LString(_newStr))
+	return 1
+}
+
 func initRe(state *lua.LState, table *lua.LTable) {
 	table.RawSetString("match", state.NewFunction(reMatch))
+	table.RawSetString("find", state.NewFunction(reFind))
+	table.RawSetString("replace", state.NewFunction(reReplace))
 }
 
 func reMatch(state *lua.LState) int {
@@ -86,5 +125,54 @@ func reMatch(state *lua.LState) int {
 		return 0
 	}
 	state.Push(lua.LBool(b))
+	return 1
+}
+
+func reFind(state *lua.LState) int {
+	arr := state.NewTable()
+	defer func() {
+		state.Push(arr)
+	}()
+	var (
+		str string
+		re  string
+	)
+	str = state.ToString(1)
+	re = state.ToString(2)
+	_re := regexp.MustCompile(re)
+	_arr := _re.FindStringSubmatch(str)
+	strSliceToTable(arr, _arr)
+	return 1
+}
+
+func reSplit(state *lua.LState) int {
+	arr := state.NewTable()
+	defer func() {
+		state.Push(arr)
+	}()
+	var (
+		str string
+		re  string
+	)
+	str = state.ToString(1)
+	re = state.ToString(2)
+	_re := regexp.MustCompile(re)
+	_arr := _re.Split(str, -1)
+	strSliceToTable(arr, _arr)
+	return 1
+}
+
+func reReplace(state *lua.LState) int {
+	var (
+		str    string
+		re     string
+		newStr string
+	)
+	str = state.ToString(1)
+	re = state.ToString(2)
+	newStr = state.ToString(3)
+	_re := regexp.MustCompile(re)
+	_newStr := _re.ReplaceAllString(str, newStr)
+	state.Push(lua.LString(_newStr))
 	return 1
 }
