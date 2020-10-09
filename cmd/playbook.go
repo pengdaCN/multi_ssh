@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
 	"log"
+	"multi_ssh/common"
 	"multi_ssh/extra_mod/playbook"
 	"multi_ssh/m_terminal"
 	"os"
@@ -32,6 +33,9 @@ var playbookCmd = cobra.Command{
 		if err := playbook.VM.DoFile(args[0]); err != nil {
 			log.Println(errors.WithStack(err))
 			return
+		}
+		if argsList != "" {
+			setGlobalVal(argsList)
 		}
 		var (
 			fn *lua.LFunction
@@ -80,4 +84,16 @@ var playbookCmd = cobra.Command{
 		close(ch)
 		<-outFinish
 	},
+}
+
+func setGlobalVal(str string) {
+	times := strings.Split(str, ",")
+	for _, v := range times {
+		item := strings.SplitN(v, "=", 1)
+		if len(item) != 2 {
+			panic("ERROR bad key value")
+		}
+		val, _ := common.ReadStr(item[1])
+		playbook.SetGlobalVal(item[0], val)
+	}
 }
