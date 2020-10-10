@@ -12,6 +12,32 @@ func initStr(state *lua.LState, table *lua.LTable) {
 	table.RawSetString("hasSuffix", state.NewFunction(strHasSuffix))
 	table.RawSetString("trim", state.NewFunction(strTrimSpace))
 	table.RawSetString("replace", state.NewFunction(strReplace))
+	table.RawSetString("contain", state.NewFunction(strContain))
+}
+
+func strContain(state *lua.LState) int {
+	b := lua.LFalse
+	defer func() {
+		state.Push(b)
+	}()
+	var (
+		str string
+		sub string
+	)
+	str = state.ToString(1)
+	{
+		val := state.Get(2)
+		switch val.Type() {
+		case lua.LTNil:
+			sub = ""
+		case lua.LTString:
+			sub = val.String()
+		default:
+			panic("ERROR require str")
+		}
+	}
+	b = lua.LBool(strings.Contains(str, sub))
+	return 1
 }
 
 func strSplit(state *lua.LState) int {
