@@ -101,6 +101,8 @@ func initRe(state *lua.LState, table *lua.LTable) {
 	table.RawSetString("match", state.NewFunction(reMatch))
 	table.RawSetString("find", state.NewFunction(reFind))
 	table.RawSetString("replace", state.NewFunction(reReplace))
+	table.RawSetString("split", state.NewFunction(reSplit))
+	table.RawSetString("splitSpace", state.NewFunction(reSplitSpace))
 }
 
 func reMatch(state *lua.LState) int {
@@ -158,6 +160,21 @@ func reSplit(state *lua.LState) int {
 	re = state.ToString(2)
 	_re := regexp.MustCompile(re)
 	_arr := _re.Split(str, -1)
+	strSliceToTable(arr, _arr)
+	return 1
+}
+
+var (
+	space = regexp.MustCompile(`\s+`)
+)
+
+func reSplitSpace(state *lua.LState) int {
+	arr := state.NewTable()
+	defer func() {
+		state.Push(arr)
+	}()
+	str := state.ToString(1)
+	_arr := space.Split(str, -1)
 	strSliceToTable(arr, _arr)
 	return 1
 }
