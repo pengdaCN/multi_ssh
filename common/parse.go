@@ -12,7 +12,7 @@ const (
 
 var (
 	firstChar      = regexp.MustCompile(`(?:\s+)?.`)
-	endWithSpace   = regexp.MustCompile(`.*?(?:\s)`)
+	endWithSpace   = regexp.MustCompile(`[^\s]*`)
 	endWithSingleB = regexp.MustCompile(`(?:').*?(?:')`)
 	endWithDoubleB = regexp.MustCompile(`(?:").*?(?:")`)
 )
@@ -40,11 +40,7 @@ func ReadStr(src string) (str string, stream string) {
 		default:
 			s = endWithSpace.FindString(src)
 		}
-		if b == "" {
-			src = src[len(s):]
-		} else {
-			src = src[len(s)+1:]
-		}
+		src = src[len(s):]
 		// 使用空格分割是没有转义功能
 		if b == "" {
 			str = s

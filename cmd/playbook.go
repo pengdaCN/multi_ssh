@@ -89,11 +89,11 @@ var playbookCmd = cobra.Command{
 func setGlobalVal(str string) {
 	times := strings.Split(str, ",")
 	for _, v := range times {
-		item := strings.SplitN(v, "=", 1)
+		item := strings.SplitN(v, "=", 2)
 		if len(item) != 2 {
 			panic("ERROR bad key value")
 		}
 		val, _ := common.ReadStr(item[1])
-		playbook.SetGlobalVal(item[0], val)
+		playbook.SetGlobalVal(strings.TrimSpace(item[0]), val)
 	}
 }
