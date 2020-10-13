@@ -41,14 +41,29 @@ var playbookCmd = cobra.Command{
 			fn *lua.LFunction
 			ok bool
 		)
+		_ = playbook.VM.CallByParam(lua.P{
+			Fn:      playbook.VM.GetGlobal("BEGIN"),
+			NRet:    0,
+			Protect: true,
+		})
 		if fn, ok = playbook.VM.GetGlobal("exec").(*lua.LFunction); !ok {
 			log.Println(errors.New("未读取到exec函数，请检查代码"))
 			return
 		}
 		finished := eachTerm(terminals, func(term *m_terminal.Terminal) {
-			playbook.Push(term.GetID(), term)
 			co, cancel := playbook.VM.NewThread()
-			_, err, _ := playbook.VM.Resume(co, fn, playbook.NewLuaTerm(co, term, cancel))
+			t := playbook.NewLuaTerm(co, term, cancel)
+			_ = playbook.VM.CallByParam(lua.P{
+				Fn:      playbook.VM.GetGlobal("EXEC_BEGIN"),
+				NRet:    0,
+				Protect: true,
+			}, t)
+			_, err, _ := playbook.VM.Resume(co, fn, t)
+			_ = playbook.VM.CallByParam(lua.P{
+				Fn:      playbook.VM.GetGlobal("EXEC_OVER"),
+				NRet:    0,
+				Protect: true,
+			}, t)
 			var (
 				msg     string
 				code    int
@@ -79,6 +94,11 @@ var playbookCmd = cobra.Command{
 				rst.u = term.GetUser()
 			}
 			ch <- rst
+		})
+		_ = playbook.VM.CallByParam(lua.P{
+			Fn:      playbook.VM.GetGlobal("OVER"),
+			NRet:    0,
+			Protect: true,
 		})
 		<-finished
 		close(ch)
