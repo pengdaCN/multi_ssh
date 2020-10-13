@@ -13,8 +13,8 @@ const (
 var (
 	firstChar      = regexp.MustCompile(`(?:\s+)?.`)
 	endWithSpace   = regexp.MustCompile(`[^\s]*`)
-	endWithSingleB = regexp.MustCompile(`(?:').*?(?:')`)
-	endWithDoubleB = regexp.MustCompile(`(?:").*?(?:")`)
+	endWithSingleB = regexp.MustCompile(`.*?(?:')`)
+	endWithDoubleB = regexp.MustCompile(`.*?(?:")`)
 )
 
 func ReadStr(src string) (str string, stream string) {
