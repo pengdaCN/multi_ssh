@@ -7,7 +7,26 @@ import (
 	"log"
 	"multi_ssh/model"
 	"strings"
+	"sync"
 )
+
+var (
+	termSessionPool = sync.Pool{
+		New: func() interface{} {
+			return &TermSession{
+				mu: sync.RWMutex{},
+			}
+		},
+	}
+)
+
+func getSession() *TermSession {
+	return termSessionPool.Get().(*TermSession)
+}
+
+func putSession(sess *TermSession) {
+	termSessionPool.Put(sess)
+}
 
 type TermSession struct {
 	*ssh.Session
@@ -16,6 +35,7 @@ type TermSession struct {
 	stdout    []byte
 	stderr    []byte
 	uinfo     model.SHHUser
+	mu        sync.RWMutex
 }
 
 func (t *Terminal) NewSession() (*TermSession, error) {
@@ -33,6 +53,37 @@ func (t *Terminal) NewSession() (*TermSession, error) {
 	ts.Stderr = make(out, 0)
 	ts.uinfo = t.user
 	return ts, nil
+}
+
+func (s *TermSession) withTerm(t *Terminal) {
+	ses, err := t.GetSessionWithTerm()
+	if err != nil {
+		panic(err)
+	}
+	s.Session = ses
+	s.TermStdin, err = s.StdinPipe()
+	if err != nil {
+		panic(err)
+	}
+	s.Stdout = make(out, 0)
+	s.Stderr = make(out, 0)
+	s.uinfo = t.user
+}
+
+func (s *TermSession) reset() {
+	s.Session = nil
+	s.rst = nil
+	s.stdout = nil
+	s.Stderr = nil
+	s.uinfo = nil
+	s.TermStdin = nil
+}
+
+func (s *TermSession) GetMsg() (rst []byte) {
+	s.mu.RLock()
+	copy(rst, s.rst)
+	defer s.mu.RUnlock()
+	return
 }
 
 func (s *TermSession) Run(enableSudo bool, cmd string) error {
@@ -58,8 +109,10 @@ func (s *TermSession) Run(enableSudo bool, cmd string) error {
 					stdout = nil
 					continue
 				}
+				s.mu.Lock()
 				s.rst = append(s.rst, o...)
 				s.stdout = append(s.stdout, o...)
+				s.mu.Unlock()
 				if enableSudo {
 					if err := sudo(s.uinfo, o, s.TermStdin); err != nil {
 						log.Println("sudo执行错误", err)
@@ -71,8 +124,10 @@ func (s *TermSession) Run(enableSudo bool, cmd string) error {
 					stderr = nil
 					continue
 				}
+				s.mu.Lock()
 				s.rst = append(s.rst, o2...)
 				s.stderr = append(s.stderr, o2...)
+				s.mu.Unlock()
 			}
 		}
 	}()

@@ -7,6 +7,7 @@ import (
 	"io"
 	"multi_ssh/model"
 	"multi_ssh/tools"
+	"sync"
 	"time"
 )
 
@@ -38,6 +39,8 @@ type Terminal struct {
 	preIndex      uint8
 	postHook      []HookFunc
 	postIndex     uint8
+	curSess       *TermSession
+	mu            sync.Mutex
 }
 
 func DefaultWithPassphrase(user model.SHHUser) (*Terminal, error) {
@@ -124,6 +127,10 @@ func (t *Terminal) GetID() int {
 	return t.id
 }
 
+func (t *Terminal) GetMsg() []byte {
+	return t.curSess.GetMsg()
+}
+
 func (t *Terminal) Run(sudo bool, cmd string) *Result {
 	defer func() {
 		t.preIndex = 0
@@ -145,11 +152,16 @@ func (t *Terminal) Run(sudo bool, cmd string) *Result {
 }
 
 func (t *Terminal) run(sudo bool, cmd string) ([]byte, []byte, []byte, error) {
-	session, err := t.NewSession()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	err = session.Run(sudo, cmd)
+	session := getSession()
+	session.withTerm(t)
+	// 保证同一时间只有命令在执行
+	t.mu.Lock()
+	defer func() {
+		t.mu.Unlock()
+		putSession(session)
+	}()
+	t.curSess = session
+	err := session.Run(sudo, cmd)
 	return session.rst, session.stdout, session.stderr, err
 }
 

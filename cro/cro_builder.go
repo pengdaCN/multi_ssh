@@ -2,17 +2,13 @@ package cro
 
 import (
 	"io"
-	"io/ioutil"
-	"multi_ssh/model"
-	"multi_ssh/tools"
 	"time"
 )
 
 type (
-	hostsFilter func(user model.SHHUser) bool
-	croBuilder  struct {
+	taskBuilder struct {
 		// 主机选择器
-		hostsF hostsFilter
+		hostsF string
 		// 设置执行任务最长时间
 		timeout time.Duration
 		// 原始的主机信息
@@ -26,42 +22,26 @@ type (
 	}
 )
 
-func ReadF(filename string) *croBuilder {
-	f, err := ioutil.ReadFile(filename)
-	if err != nil {
-		panic(err)
-	}
-	return &croBuilder{
-		rawHostsInfo: tools.ByteSlice2String(f),
-	}
-}
-
-func ReadS(hostsInfo string) *croBuilder {
-	return &croBuilder{
-		rawHostsInfo: hostsInfo,
-	}
-}
-
-func (c *croBuilder) Timeout(t time.Duration) *croBuilder {
+func (c *taskBuilder) Timeout(t time.Duration) *taskBuilder {
 	c.timeout = t
 	return c
 }
 
-func (c *croBuilder) Format(format string) *croBuilder {
+func (c *taskBuilder) Format(format string) *taskBuilder {
 	c.format = format
 	return c
 }
 
-func (c *croBuilder) ListenP(port int) *croBuilder {
+func (c *taskBuilder) ListenP(port int) *taskBuilder {
 	c.listenP = uint16(port)
 	return c
 }
 
-func (c *croBuilder) Out(o io.Writer) *croBuilder {
+func (c *taskBuilder) Out(o io.Writer) *taskBuilder {
 	c.out = o
 	return c
 }
 
-func (c *croBuilder) Filter() *croBuilder {
+func (c *taskBuilder) Filter() *taskBuilder {
 	return c
 }

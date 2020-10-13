@@ -2,11 +2,11 @@ package model
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"log"
+	"multi_ssh/tools"
 	"regexp"
 	"strings"
 )
@@ -42,7 +42,38 @@ func ReadHosts(fil string) ([]*SSHUserByPassphrase, error) {
 	if err != nil {
 		return nil, err
 	}
-	read := bufio.NewReader(bytes.NewReader(context))
+	return ReadLines(tools.ByteSlice2String(context))
+	//read := bufio.NewReader(bytes.NewReader(context))
+	//rst := make([]*SSHUserByPassphrase, 0)
+	//// 用于选出重复的条目
+	//m := make(map[string]struct{})
+	//var lineNumber int
+	//for {
+	//	lineNumber++
+	//	line, err := read.ReadString('\n')
+	//	line = strings.TrimSpace(line)
+	//	if err != nil {
+	//		if s := ReadLine(line); s != nil {
+	//			// 去除处重复的条目
+	//			if !isRepeat(m, s) {
+	//				s.line = lineNumber
+	//				rst = append(rst, s)
+	//			}
+	//		}
+	//		break
+	//	}
+	//	if s := ReadLine(line); s != nil {
+	//		if !isRepeat(m, s) {
+	//			s.line = lineNumber
+	//			rst = append(rst, s)
+	//		}
+	//	}
+	//}
+	//return rst, nil
+}
+
+func ReadLines(context string) ([]*SSHUserByPassphrase, error) {
+	read := bufio.NewReader(strings.NewReader(context))
 	rst := make([]*SSHUserByPassphrase, 0)
 	// 用于选出重复的条目
 	m := make(map[string]struct{})

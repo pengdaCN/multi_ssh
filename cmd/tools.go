@@ -177,7 +177,8 @@ func output(in <-chan *execResult, format string, writer ...io.Writer) chan stru
 						continue
 					}
 					look.Lock()
-					_, err := val.Write(tools.String2ByteSlice(o))
+					_, err := fmt.Fprint(val, o)
+					//_, err := val.Write(tools.String2ByteSlice(o))
 					look.Unlock()
 					if err != nil {
 						log.Println(err)
