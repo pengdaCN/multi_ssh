@@ -18,7 +18,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(&playbookCmd)
-	playbookCmd.Flags().StringVarP(&argsList, "set_args", "S", "", "设置lua中全局的变量，key=val形式")
+	playbookCmd.Flags().StringVarP(&argsList, "set-args", "S", "", "设置lua中全局的变量，key=val形式")
 }
 
 var playbookCmd = cobra.Command{

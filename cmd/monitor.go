@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"multi_ssh/extra_mod/playbook"
 	"multi_ssh/tools"
-	"os"
 	"strings"
 )
 
@@ -18,37 +17,47 @@ const keywords = "show"
 func monitor() {
 	var (
 		msg string
-		ch  chan *execResult
+		//ch  chan *execResult
 	)
-	go func() {
-		c := output(ch, defaultOutputFormat, os.Stdout)
-		<-c
-	}()
+	//go func() {
+	//	c := output(ch, defaultOutputFormat, os.Stdout)
+	//	<-c
+	//}()
 	for {
 		_, _ = fmt.Scanln(&msg)
 		m := strings.TrimSpace(msg)
 		if m == keywords {
-			for _, term := range terminals {
+			println("是关键字")
+			for i, term := range terminals {
+				fmt.Printf("开始读取: %d", i)
 				if o, ok := term.GetOnceShare(playbook.OutKey); ok {
 					sb := o.(*strings.Builder)
 					str := sb.String()
 					msg = str
-					ch <- &execResult{
-						code: 0,
-						u:    term.GetUser(),
-						msg:  msg,
-					}
+					println("playbook out")
+					//ch <- &execResult{
+					//	code: 0,
+					//	u:    term.GetUser(),
+					//	msg:  msg,
+					//}
+					fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), msg)
+					println("playbook over")
 					continue
 				}
+				println("get cmd data")
 				msg = tail(term.GetMsg(), 10)
-				ch <- &execResult{
-					code: 0,
-					u:    term.GetUser(),
-					msg:  msg,
-				}
+				println("cmd out")
+				fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), msg)
+				//ch <- &execResult{
+				//	code: 0,
+				//	u:    term.GetUser(),
+				//	msg:  msg,
+				//}
+				println("cmd out")
 				continue
 			}
 		}
+		println(m)
 	}
 }
 
