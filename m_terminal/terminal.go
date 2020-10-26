@@ -128,6 +128,9 @@ func (t *Terminal) GetID() int {
 }
 
 func (t *Terminal) GetMsg() []byte {
+	if t.curSess == nil {
+		return nil
+	}
 	return t.curSess.GetMsg()
 }
 
@@ -153,6 +156,7 @@ func (t *Terminal) Run(sudo bool, cmd string) *Result {
 
 func (t *Terminal) run(sudo bool, cmd string) ([]byte, []byte, []byte, error) {
 	session := getSession()
+	session.reset()
 	session.withTerm(t)
 	// 保证同一时间只有命令在执行
 	t.mu.Lock()

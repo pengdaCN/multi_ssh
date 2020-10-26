@@ -72,9 +72,9 @@ func (s *TermSession) withTerm(t *Terminal) {
 
 func (s *TermSession) reset() {
 	s.Session = nil
-	s.rst = nil
-	s.stdout = nil
-	s.Stderr = nil
+	s.rst = s.rst[:0]
+	s.stdout = s.stdout[:0]
+	s.stderr = s.stderr[:0]
 	s.uinfo = nil
 	s.TermStdin = nil
 }

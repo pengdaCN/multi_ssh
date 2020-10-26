@@ -16,7 +16,8 @@ const keywords = "show"
 
 func monitor() {
 	var (
-		msg string
+		msg     string
+		curInfo string
 		//ch  chan *execResult
 	)
 	//go func() {
@@ -27,23 +28,25 @@ func monitor() {
 		_, _ = fmt.Scanln(&msg)
 		m := strings.TrimSpace(msg)
 		if m == keywords {
-			println("是关键字")
-			for i, term := range terminals {
-				fmt.Printf("开始读取: %d", i)
+			if terminals == nil {
+				continue
+			}
+			for _, term := range terminals {
 				if o, ok := term.GetOnceShare(playbook.OutKey); ok {
 					sb := o.(*strings.Builder)
 					str := sb.String()
-					msg = str
+					curInfo = str
 					//ch <- &execResult{
 					//	code: 0,
 					//	u:    term.GetUser(),
 					//	msg:  msg,
 					//}
-					fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), msg)
+					curInfo += fmt.Sprintf("\nshell cur: {\n%s\n}", tail(term.GetMsg(), 10))
+					fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), curInfo)
 					continue
 				}
-				msg = tail(term.GetMsg(), 10)
-				fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), msg)
+				curInfo = tail(term.GetMsg(), 10)
+				fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), curInfo)
 				//ch <- &execResult{
 				//	code: 0,
 				//	u:    term.GetUser(),
@@ -57,7 +60,7 @@ func monitor() {
 }
 
 func tail(src []byte, n int) string {
-	if n <= 0 {
+	if n <= 0 || src == nil {
 		return ""
 	}
 	cache := []int{0}
