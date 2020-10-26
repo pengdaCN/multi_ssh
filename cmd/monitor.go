@@ -34,26 +34,21 @@ func monitor() {
 					sb := o.(*strings.Builder)
 					str := sb.String()
 					msg = str
-					println("playbook out")
 					//ch <- &execResult{
 					//	code: 0,
 					//	u:    term.GetUser(),
 					//	msg:  msg,
 					//}
 					fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), msg)
-					println("playbook over")
 					continue
 				}
-				println("get cmd data")
 				msg = tail(term.GetMsg(), 10)
-				println("cmd out")
 				fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), msg)
 				//ch <- &execResult{
 				//	code: 0,
 				//	u:    term.GetUser(),
 				//	msg:  msg,
 				//}
-				println("cmd out")
 				continue
 			}
 		}
@@ -62,19 +57,21 @@ func monitor() {
 }
 
 func tail(src []byte, n int) string {
-	var cache []int
+	if n <= 0 {
+		return ""
+	}
+	cache := []int{0}
+	_src := src
 	for {
-		i := bytes.IndexRune(src, '\n')
+		i := bytes.IndexRune(_src, '\n')
 		if i == -1 {
-			cache = append(cache, len(src))
-		}
-		cache = append(cache, i)
-		if len(src) == 0 {
 			break
 		}
+		cache = append(cache, cache[len(cache)-1]+i+1)
+		_src = _src[i+1:]
 	}
 	if n > len(cache) {
 		return tools.ByteSlice2String(src)
 	}
-	return tools.ByteSlice2String(src[cache[len(cache)-n-1]:])
+	return tools.ByteSlice2String(src[cache[len(cache)-(n-1)-1]:])
 }
