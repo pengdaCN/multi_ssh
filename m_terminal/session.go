@@ -65,8 +65,12 @@ func (s *TermSession) withTerm(t *Terminal) {
 	if err != nil {
 		panic(err)
 	}
-	s.Stdout = make(out, 0)
-	s.Stderr = make(out, 0)
+	if s.Stdout == nil {
+		s.Stdout = make(out, 0)
+	}
+	if s.stderr == nil {
+		s.Stderr = make(out, 0)
+	}
 	s.uinfo = t.user
 }
 
