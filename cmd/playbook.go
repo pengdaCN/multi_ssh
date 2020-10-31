@@ -126,14 +126,24 @@ func setGlobalVal(str string) {
 		if !assignment.MatchString(str) {
 			panic("ERROR format")
 		}
-		str = str[strings.IndexRune(str, '='):]
+		{
+			t := assignment.FindString(str)
+			if t == "" {
+				panic("ERROR require assignment")
+			}
+			str = str[len(t):]
+		}
 		val, str = common.ReadStr(str)
 		playbook.SetGlobalVal(word, val)
 		if spaceLine.MatchString(str) {
 			break
 		}
-		if !segmentation.MatchString(str) {
-			panic("ERROR format")
+		{
+			t := segmentation.FindString(str)
+			if t == "" {
+				break
+			}
+			str = str[len(t):]
 		}
 	}
 }
