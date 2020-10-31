@@ -9,6 +9,20 @@ import (
 	"time"
 )
 
+func SetReadOnly(l *lua.LState, table *lua.LTable) *lua.LUserData {
+	ud := l.NewUserData()
+	mt := l.NewTable()
+	// 设置表中域的指向为 table
+	l.SetField(mt, "__index", table)
+	// 限制对表的更新操作
+	l.SetField(mt, "__newindex", l.NewFunction(func(state *lua.LState) int {
+		state.RaiseError("not allow to modify table")
+		return 0
+	}))
+	ud.Metatable = mt
+	return ud
+}
+
 func useTimeoutFromLvalue(value lua.LValue) context.Context {
 	switch value.Type() {
 	case lua.LTNil:

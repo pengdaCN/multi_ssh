@@ -52,27 +52,36 @@ var playbookCmd = cobra.Command{
 			return
 		}
 		finished := eachTerm(terminals, func(term *m_terminal.Terminal) {
-			co, cancel := playbook.VM.NewThread()
-			t := playbook.NewLuaTerm(co, term, cancel)
-			_ = playbook.VM.CallByParam(lua.P{
+			// 执行begin
+			beginCo, beginCancel := playbook.VM.NewThread()
+			beginT := playbook.NewLuaTerm(beginCo, term, beginCancel)
+			_ = beginCo.CallByParam(lua.P{
 				Fn:      playbook.VM.GetGlobal("EXEC_BEGIN"),
 				NRet:    0,
 				Protect: true,
-			}, t)
+			}, beginT)
+
+			// 执行 exec
+			co, cancel := playbook.VM.NewThread()
+			t := playbook.NewLuaTerm(co, term, cancel)
 			_, err, _ := playbook.VM.Resume(co, fn, t)
-			_ = playbook.VM.CallByParam(lua.P{
+			if err != nil {
+				log.Println("exec : ", err.Error())
+			}
+
+			// 执行over
+			overCo, overCancel := playbook.VM.NewThread()
+			overT := playbook.NewLuaTerm(beginCo, term, overCancel)
+			_ = overCo.CallByParam(lua.P{
 				Fn:      playbook.VM.GetGlobal("EXEC_OVER"),
 				NRet:    0,
 				Protect: true,
-			}, t)
+			}, overT)
 			var (
 				msg     string
 				code    int
 				errInfo string
 			)
-			if err != nil {
-				log.Println("VM: ", err.Error())
-			}
 			out, ok := term.GetOnceShare(playbook.OutKey)
 			if ok {
 				sb := out.(*strings.Builder)
