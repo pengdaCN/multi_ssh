@@ -9,6 +9,7 @@ import (
 	"multi_ssh/extra_mod/playbook"
 	"multi_ssh/m_terminal"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -106,14 +107,33 @@ var playbookCmd = cobra.Command{
 	},
 }
 
+var (
+	spaceLine    = regexp.MustCompile(`^\s*$`)
+	assignment   = regexp.MustCompile(`^\s*=`)
+	segmentation = regexp.MustCompile(`^\s*,`)
+)
+
 func setGlobalVal(str string) {
-	items := strings.Split(str, ",")
-	for _, v := range items {
-		item := strings.SplitN(v, "=", 2)
-		if len(item) != 2 {
-			panic("ERROR bad key value")
+	var (
+		word string
+		val  string
+	)
+	for {
+		if spaceLine.MatchString(str) {
+			break
 		}
-		val, _ := common.ReadStr(item[1])
-		playbook.SetGlobalVal(strings.TrimSpace(item[0]), val)
+		word, str = common.ReadWord(str)
+		if !assignment.MatchString(str) {
+			panic("ERROR format")
+		}
+		str = str[strings.IndexRune(str, '='):]
+		val, str = common.ReadStr(str)
+		playbook.SetGlobalVal(word, val)
+		if spaceLine.MatchString(str) {
+			break
+		}
+		if !segmentation.MatchString(str) {
+			panic("ERROR format")
+		}
 	}
 }

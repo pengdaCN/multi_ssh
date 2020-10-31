@@ -87,7 +87,7 @@ func (s *TermSession) GetMsg() (rst []byte) {
 	s.mu.RLock()
 	rst = make([]byte, len(s.rst))
 	copy(rst, s.rst)
-	defer s.mu.RUnlock()
+	s.mu.RUnlock()
 	return
 }
 

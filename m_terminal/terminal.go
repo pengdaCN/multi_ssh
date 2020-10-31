@@ -159,9 +159,9 @@ func (t *Terminal) run(sudo bool, cmd string) ([]byte, []byte, []byte, error) {
 	session.reset()
 	session.withTerm(t)
 	// 保证同一时间只有命令在执行
-	t.mu.Lock()
+	//t.mu.Lock()
 	defer func() {
-		t.mu.Unlock()
+		//t.mu.Unlock()
 		putSession(session)
 	}()
 	t.curSess = session
