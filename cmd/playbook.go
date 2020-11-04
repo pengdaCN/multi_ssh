@@ -77,6 +77,7 @@ var playbookCmd = cobra.Command{
 				NRet:    0,
 				Protect: true,
 			}, overT)
+			term.CfgStat()
 			var (
 				msg     string
 				code    int

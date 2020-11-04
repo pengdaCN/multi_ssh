@@ -18,3 +18,17 @@ func TrimSudo(t *Terminal) {
 	}
 	r.msg = strings.TrimSpace(r.msg)
 }
+
+const INCRSLEEP = "MULTI_SSH_EXIT_CODE=`echo $?`;sleep 1;exit $MULTI_SSH_EXIT_CODE"
+
+func autoIncrSleep(t *Terminal) {
+	t.currentCmd = strings.TrimSpace(t.currentCmd)
+	switch t.currentCmd[len(t.currentCmd)-1] {
+	case '&':
+		t.currentCmd += " " + INCRSLEEP
+	case ';':
+		t.currentCmd += INCRSLEEP
+	default:
+		t.currentCmd += ";" + INCRSLEEP
+	}
+}

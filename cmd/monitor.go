@@ -32,6 +32,9 @@ func monitor() {
 				continue
 			}
 			for _, term := range terminals {
+				if term.GetTaskStat() {
+					continue
+				}
 				if o, ok := term.GetOnceShare(playbook.OutKey); ok {
 					sb := o.(*strings.Builder)
 					str := sb.String()

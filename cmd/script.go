@@ -45,6 +45,7 @@ var scriptCmd = cobra.Command{
 		}
 		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
 			rst := term.Script(scriptSudo, bytes.NewReader(scriptContext), scriptArgs)
+			term.CfgStat()
 			r := buildExecResultFromResult(rst)
 			r.u = term.GetUser()
 			ch <- r

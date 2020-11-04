@@ -40,7 +40,8 @@ type Terminal struct {
 	postHook      []HookFunc
 	postIndex     uint8
 	curSess       *TermSession
-	mu            sync.Mutex
+	mu            sync.RWMutex
+	taskStat      bool
 }
 
 func DefaultWithPassphrase(user model.SHHUser) (*Terminal, error) {
@@ -49,6 +50,7 @@ func DefaultWithPassphrase(user model.SHHUser) (*Terminal, error) {
 		return nil, err
 	}
 	term.RreUse(ExpandCmd)
+	term.RreUse(autoIncrSleep)
 	term.PostUse(TrimSudo)
 	return term, nil
 }
@@ -192,4 +194,17 @@ func (t *Terminal) GetUser() model.SHHUser {
 
 func (t *Terminal) Close() error {
 	return t.client.Close()
+}
+
+func (t *Terminal) CfgStat() {
+	t.mu.Lock()
+	t.taskStat = !t.taskStat
+	t.mu.Unlock()
+}
+
+func (t *Terminal) GetTaskStat() (stat bool) {
+	t.mu.RLock()
+	stat = t.taskStat
+	t.mu.RUnlock()
+	return
 }

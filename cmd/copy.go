@@ -34,6 +34,7 @@ var copyCmd = cobra.Command{
 		outFinish := output(ch, outFormat, os.Stdout)
 		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
 			rst := term.Copy(copyExists, copySudo, srcPaths, dstPath)
+			term.CfgStat()
 			r := buildExecResultFromResult(rst)
 			r.u = term.GetUser()
 			ch <- r
