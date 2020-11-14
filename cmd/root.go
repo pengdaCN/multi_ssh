@@ -11,18 +11,19 @@ import (
 	"time"
 )
 
-const version = `0.3.3`
+const version = `0.3.4`
 
 type (
 	userSlice []model.SHHUser
 )
 
 var (
-	hosts     string
-	hostLine  string
-	outFormat string
-	filterStr string
-	preInfo   bool
+	hosts        string
+	hostLine     string
+	outFormat    string
+	filterStr    string
+	execableNums int
+	preInfo      bool
 )
 
 var (
@@ -38,6 +39,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&filterStr, "filter", "F", "", "使用格式选择需要执行的主机")
 	rootCmd.Flags().BoolVarP(&preInfo, "uinfo", "", true, "是否在对主机操作之前获取他的信息")
 	rootCmd.Flags().DurationVarP(&timeout, "wait", "w", -1, "设置超时，默认不永不超时")
+	rootCmd.Flags().IntVarP(&execableNums, "limit-exec", "L", -1, "限制执行连接主机最大个数，默认限制")
 }
 
 func (u userSlice) Less(v1, v2 int) bool {

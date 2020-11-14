@@ -4,6 +4,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 	"regexp"
 	"strings"
+	"sync/atomic"
 )
 
 func initStr(state *lua.LState, table *lua.LTable) {
@@ -157,19 +158,46 @@ func reMatch(state *lua.LState) int {
 }
 
 func reFind(state *lua.LState) int {
-	arr := state.NewTable()
-	defer func() {
-		state.Push(arr)
-	}()
 	var (
-		str string
-		re  string
+		str  string
+		re   string
+		mode string
 	)
 	str = state.ToString(1)
 	re = state.ToString(2)
+	mode = state.ToString(3)
 	_re := regexp.MustCompile(re)
-	_arr := _re.FindStringSubmatch(str)
-	strSliceToTable(arr, _arr)
+	if mode == "" || mode == lua.LTNil.String() {
+		// 为兼容之前的版本
+		mode = "sub"
+	}
+	switch mode {
+	case "sub":
+		arr := state.NewTable()
+		_arr := _re.FindStringSubmatch(str)
+		strSliceToTable(arr, _arr)
+		state.Push(arr)
+	case "sub_all":
+		arr := state.NewTable()
+		_arr := _re.FindAllStringSubmatch(str, -1)
+		for i, v := range _arr {
+			a := state.NewTable()
+			strSliceToTable(a, v)
+			arr.Insert(i+1, a)
+		}
+		state.Push(arr)
+	case "str":
+		r := _re.FindString(str)
+		state.Push(lua.LString(r))
+	case "str_all":
+		arr := state.NewTable()
+		_arr := _re.FindAllString(str, -1)
+		strSliceToTable(arr, _arr)
+		state.Push(arr)
+	default:
+		r := _re.FindString(str)
+		state.Push(lua.LString(r))
+	}
 	return 1
 }
 
@@ -217,5 +245,36 @@ func reReplace(state *lua.LState) int {
 	_re := regexp.MustCompile(re)
 	_newStr := _re.ReplaceAllString(str, newStr)
 	state.Push(lua.LString(_newStr))
+	return 1
+}
+
+var (
+	shareN int32
+)
+
+func setOnceShareNum(state *lua.LState) int {
+	i := state.ToInt(1)
+	if i < 0 {
+		state.Push(lua.LFalse)
+	}
+	if atomic.LoadInt32(&shareN) > 0 {
+		state.Push(lua.LFalse)
+	}
+	atomic.SwapInt32(&shareN, int32(i))
+	state.Push(lua.LTrue)
+	return 1
+}
+
+func getShareNum(state *lua.LState) int {
+START:
+	cur := atomic.LoadInt32(&shareN)
+	if cur <= 0 {
+		state.Push(lua.LNumber(0))
+		return 1
+	}
+	if !atomic.CompareAndSwapInt32(&shareN, cur, cur-1) {
+		goto START
+	}
+	state.Push(lua.LNumber(cur))
 	return 1
 }

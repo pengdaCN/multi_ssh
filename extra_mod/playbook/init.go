@@ -13,6 +13,8 @@ func init() {
 	tools := VM.NewTable()
 	VM.SetGlobal("tools", tools)
 	tools.RawSetString("sleep", VM.NewFunction(luaSleep))
+	tools.RawSetString("setShareIotaMax", VM.NewFunction(setOnceShareNum))
+	tools.RawSetString("getShareIota", VM.NewFunction(getShareNum))
 	{
 		str := VM.NewTable()
 		tools.RawSetString("str", str)

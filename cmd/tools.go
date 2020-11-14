@@ -69,6 +69,9 @@ func eachTerm(terms []*m_terminal.Terminal, fn eachFunc) chan struct{} {
 		}()
 		var w sync.WaitGroup
 		for i := 0; i < len(terms); i++ {
+			if execableNums > 0 && execableNums < i {
+				continue
+			}
 			w.Add(1)
 			go func(term *m_terminal.Terminal) {
 				defer w.Done()
