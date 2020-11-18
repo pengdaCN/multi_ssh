@@ -4,6 +4,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 	"regexp"
 	"strings"
+	"sync"
 	"sync/atomic"
 )
 
@@ -276,5 +277,183 @@ START:
 		goto START
 	}
 	state.Push(lua.LNumber(cur))
+	return 1
+}
+
+func newMux(state *lua.LState) int {
+	var rwLock sync.RWMutex
+	tb := state.NewTable()
+	lock := func(lState *lua.LState) int {
+		rwLock.Lock()
+		return 0
+	}
+	rLock := func(lState *lua.LState) int {
+		rwLock.RLock()
+		return 0
+	}
+	unLock := func(lState *lua.LState) int {
+		rwLock.Unlock()
+		return 0
+	}
+	unRLock := func(lState *lua.LState) int {
+		rwLock.RUnlock()
+		return 0
+	}
+	tb.RawSetString("lock", state.NewFunction(lock))
+	tb.RawSetString("rLock", state.NewFunction(rLock))
+	tb.RawSetString("unLock", state.NewFunction(unLock))
+	tb.RawSetString("unRLock", state.NewFunction(unRLock))
+	SetReadOnly(state, tb)
+	state.Push(tb)
+	return 1
+}
+
+func newWaitGroup(state *lua.LState) int {
+	gw := state.NewTable()
+	var w sync.WaitGroup
+	// add func
+	add := func(lState *lua.LState) int {
+		i := lState.ToInt(1)
+		if i < 0 {
+			panic("add value cannot zero")
+		}
+		w.Add(i)
+		return 0
+	}
+	// done func
+	done := func(lState *lua.LState) int {
+		w.Done()
+		return 0
+	}
+	// wait func
+	wait := func(lState *lua.LState) int {
+		w.Wait()
+		return 0
+	}
+	gw.RawSetString("add", state.NewFunction(add))
+	gw.RawSetString("done", state.NewFunction(done))
+	gw.RawSetString("wait", state.NewFunction(wait))
+	SetReadOnly(state, gw)
+	state.Push(gw)
+	return 1
+}
+
+func newTokenBucket(state *lua.LState) int {
+	i := int32(state.ToInt(1))
+	if i < 0 {
+		panic("bucket size cannot zero")
+	}
+	t := state.NewTable()
+	get := func(lState *lua.LState) int {
+	START:
+		cur := atomic.LoadInt32(&i)
+		if cur <= 0 {
+			state.Push(lua.LNumber(0))
+			return 1
+		}
+		if !atomic.CompareAndSwapInt32(&i, cur, cur-1) {
+			goto START
+		}
+		state.Push(lua.LNumber(cur))
+		return 1
+	}
+	t.RawSetString("get", state.NewFunction(get))
+	SetReadOnly(state, t)
+	state.Push(t)
+	return 1
+}
+
+type safeTable struct {
+	mu sync.RWMutex
+	tb *lua.LTable
+}
+
+func (s *safeTable) append(value lua.LValue) {
+	s.mu.Lock()
+	s.tb.Append(value)
+	s.mu.Unlock()
+}
+
+func (s *safeTable) set(key, val lua.LValue) {
+	s.mu.Lock()
+	s.tb.RawSet(key, val)
+	s.mu.Unlock()
+	return
+}
+
+func (s *safeTable) len() int {
+	var length int
+	s.mu.RLock()
+	length = s.tb.Len()
+	s.mu.RUnlock()
+	return length
+}
+
+func (s *safeTable) get(key lua.LValue) lua.LValue {
+	var val lua.LValue
+	s.mu.RLock()
+	val = s.tb.RawGet(key)
+	s.mu.RUnlock()
+	return val
+}
+
+func (s *safeTable) rLock() {
+	s.mu.RLock()
+}
+
+func (s *safeTable) rUnlock() {
+	s.mu.RUnlock()
+}
+
+func (s *safeTable) into() *lua.LTable {
+	return s.tb
+}
+
+func newSafeTable(state *lua.LState) int {
+	st := new(safeTable)
+	lAppend := func(lState *lua.LState) int {
+		val := lState.Get(1)
+		st.append(val)
+		return 0
+	}
+	lSet := func(lState *lua.LState) int {
+		key, val := lState.Get(1), lState.Get(2)
+		st.set(key, val)
+		return 0
+	}
+	lGet := func(lState *lua.LState) int {
+		key := lState.Get(1)
+		val := st.get(key)
+		lState.Push(val)
+		return 1
+	}
+	lLen := func(lState *lua.LState) int {
+		val := st.len()
+		lState.Push(lua.LNumber(val))
+		return 1
+	}
+	rLock := func(lState *lua.LState) int {
+		st.rLock()
+		return 0
+	}
+	rUnlock := func(lState *lua.LState) int {
+		st.rUnlock()
+		return 0
+	}
+	into := func(lState *lua.LState) int {
+		t := st.into()
+		lState.Push(t)
+		return 1
+	}
+	tb := state.NewTable()
+	tb.RawSetString("append", state.NewFunction(lAppend))
+	tb.RawSetString("set", state.NewFunction(lSet))
+	tb.RawSetString("get", state.NewFunction(lGet))
+	tb.RawSetString("len", state.NewFunction(lLen))
+	tb.RawSetString("rlock", state.NewFunction(rLock))
+	tb.RawSetString("runlock", state.NewFunction(rUnlock))
+	tb.RawSetString("into", state.NewFunction(into))
+	SetReadOnly(state, tb)
+	state.Push(tb)
 	return 1
 }

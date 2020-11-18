@@ -77,7 +77,12 @@ func eachTerm(terms []*m_terminal.Terminal, fn eachFunc) chan struct{} {
 				defer w.Done()
 				ch := make(chan struct{}, 0)
 				go func() {
-					fn(term)
+					err := tools.PanicToErr(func() {
+						fn(term)
+					})
+					if err != nil {
+						log.Println(err)
+					}
 					ch <- struct{}{}
 				}()
 				// 设置任务超时
