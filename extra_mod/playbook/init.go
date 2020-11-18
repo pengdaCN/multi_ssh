@@ -11,7 +11,6 @@ var (
 func init() {
 	VM = lua.NewState()
 	tools := VM.NewTable()
-	VM.SetGlobal("tools", tools)
 	tools.RawSetString("sleep", VM.NewFunction(luaSleep))
 	tools.RawSetString("setShareIotaMax", VM.NewFunction(setOnceShareNum))
 	tools.RawSetString("getShareIota", VM.NewFunction(getShareNum))
@@ -19,7 +18,6 @@ func init() {
 	tools.RawSetString("newTokenBucket", VM.NewFunction(newTokenBucket))
 	tools.RawSetString("newMux", VM.NewFunction(newMux))
 	tools.RawSetString("newSafeTable", VM.NewFunction(newSafeTable))
-
 	{
 		str := VM.NewTable()
 		tools.RawSetString("str", str)
@@ -30,4 +28,5 @@ func init() {
 		tools.RawSetString("re", re)
 		initRe(VM, re)
 	}
+	VM.SetGlobal("tools", SetReadOnly(VM, tools))
 }

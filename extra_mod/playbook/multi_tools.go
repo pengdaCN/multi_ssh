@@ -295,16 +295,15 @@ func newMux(state *lua.LState) int {
 		rwLock.Unlock()
 		return 0
 	}
-	unRLock := func(lState *lua.LState) int {
+	rUnlock := func(lState *lua.LState) int {
 		rwLock.RUnlock()
 		return 0
 	}
 	tb.RawSetString("lock", state.NewFunction(lock))
 	tb.RawSetString("rLock", state.NewFunction(rLock))
 	tb.RawSetString("unLock", state.NewFunction(unLock))
-	tb.RawSetString("unRLock", state.NewFunction(unRLock))
-	SetReadOnly(state, tb)
-	state.Push(tb)
+	tb.RawSetString("rUnlock", state.NewFunction(rUnlock))
+	state.Push(SetReadOnly(state, tb))
 	return 1
 }
 
@@ -333,8 +332,7 @@ func newWaitGroup(state *lua.LState) int {
 	gw.RawSetString("add", state.NewFunction(add))
 	gw.RawSetString("done", state.NewFunction(done))
 	gw.RawSetString("wait", state.NewFunction(wait))
-	SetReadOnly(state, gw)
-	state.Push(gw)
+	state.Push(SetReadOnly(state, gw))
 	return 1
 }
 
@@ -358,8 +356,7 @@ func newTokenBucket(state *lua.LState) int {
 		return 1
 	}
 	t.RawSetString("get", state.NewFunction(get))
-	SetReadOnly(state, t)
-	state.Push(t)
+	state.Push(SetReadOnly(state, t))
 	return 1
 }
 
@@ -411,6 +408,7 @@ func (s *safeTable) into() *lua.LTable {
 
 func newSafeTable(state *lua.LState) int {
 	st := new(safeTable)
+	st.tb = state.NewTable()
 	lAppend := func(lState *lua.LState) int {
 		val := lState.Get(1)
 		st.append(val)
@@ -450,10 +448,9 @@ func newSafeTable(state *lua.LState) int {
 	tb.RawSetString("set", state.NewFunction(lSet))
 	tb.RawSetString("get", state.NewFunction(lGet))
 	tb.RawSetString("len", state.NewFunction(lLen))
-	tb.RawSetString("rlock", state.NewFunction(rLock))
-	tb.RawSetString("runlock", state.NewFunction(rUnlock))
+	tb.RawSetString("rLock", state.NewFunction(rLock))
+	tb.RawSetString("rUnlock", state.NewFunction(rUnlock))
 	tb.RawSetString("into", state.NewFunction(into))
-	SetReadOnly(state, tb)
-	state.Push(tb)
+	state.Push(SetReadOnly(state, tb))
 	return 1
 }

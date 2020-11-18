@@ -51,6 +51,9 @@ var playbookCmd = cobra.Command{
 			log.Println(errors.New("未读取到exec函数，请检查代码"))
 			return
 		}
+		m := playbook.VM.NewTable()
+		playbook.VM.SetGlobal("m", m)
+		m.RawSetString("hosts_num", lua.LNumber(len(terminals)))
 		finished := eachTerm(terminals, func(term *m_terminal.Terminal) {
 			// 执行begin
 			beginCo, beginCancel := playbook.VM.NewThread()

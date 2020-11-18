@@ -7,7 +7,7 @@ import (
 	"net"
 )
 
-func NewLuaTerm(state *lua.LState, term *m_terminal.Terminal, cancel context.CancelFunc) *lua.LTable {
+func NewLuaTerm(state *lua.LState, term *m_terminal.Terminal, cancel context.CancelFunc) *lua.LUserData {
 	tab := state.NewTable()
 	state.SetField(tab, "shell", state.NewFunction(newShell(term)))
 	state.SetField(tab, "script", state.NewFunction(newScript(term)))
@@ -22,14 +22,14 @@ func NewLuaTerm(state *lua.LState, term *m_terminal.Terminal, cancel context.Can
 	state.SetField(tab, "hostInfo", initHostInfo(state, term))
 	state.SetField(tab, "iota", lua.LNumber(term.GetBirthID()))
 	state.SetField(tab, "exit", state.NewFunction(newExit(cancel)))
-	return tab
+	return SetReadOnly(state, tab)
 }
 
-func initHostInfo(state *lua.LState, term *m_terminal.Terminal) *lua.LTable {
+func initHostInfo(state *lua.LState, term *m_terminal.Terminal) *lua.LUserData {
 	hostInfo := state.NewTable()
 	s := term.GetUser()
 	if s == nil {
-		return state.NewTable()
+		return state.NewUserData()
 	}
 	hostInfo.RawSetString("line", lua.LNumber(s.Line()))
 	ip, port, err := net.SplitHostPort(s.Host())
@@ -40,7 +40,7 @@ func initHostInfo(state *lua.LState, term *m_terminal.Terminal) *lua.LTable {
 	hostInfo.RawSetString("user", lua.LString(s.User()))
 	e := s.Extra()
 	if e != nil {
-		hostInfo.RawSetString("extra", mapToLTable(state, e))
+		hostInfo.RawSetString("extra", SetReadOnly(state, mapToLTable(state, e)))
 	}
-	return hostInfo
+	return SetReadOnly(state, hostInfo)
 }

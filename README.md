@@ -102,13 +102,21 @@ script：将本地文件在远端上执行，更多可以通过help获取帮助
 
 copy：将本地文件拷贝到远端，可使用`~`方式代表当前登录用户的家目录，更多可以通过help获取帮助
 
-palybook：使用lua脚本，调用multi_ssh提供的方法，进行调用
-
 ​	**选项：**
 
 ​	--sudo：将需要拷贝的文件放在被操作主机的任意位置
 
 ​	--exists：当拷贝的目录不存在会自动创建
+
+palybook：使用lua脚本，调用multi_ssh提供的方法，进行调用
+
+​	**选项**
+
+​	--set-args：在multi_ssh 调用任何一个函数之前，进行将一些变量的值进行提前的设置，在set-args中，只能将变量设置为字符串，多个变量以`,`分隔
+
+​	exmaple：
+
+​	`--set-args 'name = "张三", age = "18"'`
 
 #### 常见示例
 
@@ -125,7 +133,7 @@ multi_ssh --line 'panda, 123456, local.panda.org:22' shell 'you-get --version'
 
 该功能通过gopher-lua库提供的lua虚拟机以及api实现
 
-使用multi_ssh执行的lua脚本，必须有一个exec函数，multi_ssh会自动调用exec函数，同事，exec函数头必须如下所示
+使用multi_ssh执行的lua脚本，必须有一个exec函数，multi_ssh会自动调用exec函数，同时，exec函数头必须如下所示
 
 ```lua
 -- exec函数头
@@ -139,99 +147,113 @@ exec方法的term参数由multi_ssh调用时自动传入
 
 有关exec函数的term参数介绍
 
-> exec函数的term参数有multi_ssh 在执行对应主机时自动传入，其中传入lua虚拟机中的term是一个table，是对go函数的封装，在golang对应的一个go方法持有该lua thread操作的terminal的闭包函数，正是通过该中方式实现对不同主机的区分操作，对于lua而言，term对象就是所有对terminal操作的集合
+> exec函数的term参数有multi_ssh 在执行对应主机时自动传入，其中传入lua虚拟机中的term是一个自读的userdata，是对go函数的封装，在golang对应的一个go方法持有该lua thread操作的terminal的闭包函数，正是通过该中方式实现对不同主机的区分操作，对于lua而言，term对象就是所有对terminal操作的集合
 
-**term对象所支持的方法**
+在playbook中除了主机执行入口函数exec，还有4各对应playbook周期的钩子函数，分别是BEGIN，OVER，EXEC_BEGIN，EXEC_OVER
 
-1. shell
+，其中，BEGIN和OVER函数头如下，这两个函数分别在整个playbook开始执行之前调用和执行结束之后调用
 
-   ```lua
-   function exec(term)
-      	local r1 = term.shell({sudo=true, 'sudo whoami'})
-       term.outln(r1.msg)
-   end
-   ```
+```lua
+function BEGIN()
+    --statment
+end
 
-   shell函数等同于shell子命令，用与执行一条shell命令
+function OVER()
+    --statemet
+end
+```
 
-   shell函数接收一个table，参数table规则如下，键`sudo`的值是一个boolean值，用控制是否开始sudo功能，该功能需要登录被操作主机有执行sudo的权利，否则即使使用改参数也无效
+EXEC_BEGIN与EXEC_OVER函数分别是在exec方法执行之前和之后调用的，其函数头如下
 
-   shell函数所接受的table参数的中的sudo参数可以不写，不写则为false
+```lua
+function EXEC_BEGIN(term)
+    --statment
+end
 
-2. script
+function EXEC_OVER(term)
+    --statment
+end
+```
 
-   ```lua
-   function exec(term)
-      	local r1 = term.script({sudo=true, './example.sh'})
-       term.outln(r1.msg)
-   end
-   ```
+关于exec函数，该函数是multi_ssh针对每个被操作的主机都需要执行的函数，对应一个gorouting，所有，在exec函数中的都是并发的操作，对于全局变量的读写一定要注意并发的安全性
 
-   script函数等同于script子命令，用于在远端的主机上执行登录的一个脚本
+##### 关于exec方法所接收的term对象和所提供的方法以及其说明
 
-   script函数同shell函数一样，也收一个table对象，其中sudo参数用于以sudo身份执行脚本，另一个非key-value的参数是需要在远端执行脚本的路径
+term对象是一个自读的userdata对象，是一组对当前主机操作的方法集合，其结构如下
 
-3. copy
+```lua
+term = {
+    shell: function({sudo: bool, 'commands'}),
+    script: function({sudo: bool, text: str, 'script_path'}),
+    copy: function({sudo: bool, exists: bool, {'src1', 'src2'}| 'src', 'dst'}),
+    out: function(msg: str),
+    outln: function(msg: str),
+    extraInfo: function(),
+	hostInfo: function(),
+    setCode: function(code: int),
+    setErrCode: function(code: int, errInfo: str),
+    sleep: function(secends: int),
+    hostInfo: {
+    	line: int,
+        ip: str,
+        port: str,
+        user: str,
+        extra: {
+        	key: val
+        }
+    }
+   	iota: int
+    exit: function()
+}
+```
 
-   ```lua
-   function exec(term)
-      	local r1 = term.copy({{'~/example.sh', '~/example.txt'} ,'~'})
-       term.outln(r1.code)
-   end
-   ```
+##### 关于提供的tools工具对象所提供的方法和说明
 
-   copy函数等同于copy子命令，用于将本地文件传送到远端
+tools对象是multi_ssh实现的一组全局工具方法，通过使用自读的userdata注入到全局变量tools中，其结构如下
 
-   sopy函数接受一个table对象的参数，其中第一个非key-value形式的值，可以是string，可以是table类型，用于表示本地需要拷贝到远端的文件，当参数用string类型时，表示本地有一个文件需要传输到远端，主要，类型为string时，不支持多个本地文件的表示方法，当类型为table类型时，其中table的元素需要为string类型，表示需要从本地拷贝到远端的文件，其中第 二个位key-value的值为需要拷贝到 远端文件的路径，需要注意的是，这个两参数不能省略
-
-4. extraInfo
-
-   ```lua
-   function exec(term)
-      	local info = term.extraInfo()
-       term.outln(type(info))
-       for k, v in pairs(info) do
-           print(k, v)
-       end
-   end
-   ```
-
-   extraInfo函数适用于在远端执行时动态的获取hosts文件配置的扩展信息参数
-
-   extraInfo函数返回一个table类型，其中键和值都是string类型
-
-5. out
-
-   ```lua
-   function exec(term)
-       term.out('hello world')
-   end
-   ```
-
-   out函数，使用multi_ssh统一输出，不进行换行
-
-   out函数与outln函数本质一样，都是一样输出字符串到multi_ssh的执行结果中，注意，在multi_ssh不建议使用print函数，应为该函数由lua虚拟机进行自行输出，不受到multi_ssh控制，可能会打乱multi_ssh的输出样式，推荐使用out和outln进行输出打印
-
-6. outln
-
-   ```lua
-   function exec(term)
-       term.outln('hello world')
-   end
-   ```
-
-   outln函数与out函数一样，唯一的区别是outln函数会进行换行输出
-
-7. setCode与setErrinfo
-
-   ```lua
-   function exec(term)
-       term.setCode(10)
-       term.setErrInfo(1, '系统错误')
-   end
-   ```
-
-   setCode函数用于设置lua脚本执行完时，执行结果的状态码，setErrInfo函数用于设置lua脚本执行完后状态码，与错误信息，注意，setCode与setErrInfo都可以设置状态，最终以最后一个执行的为准，同时，需要注意的是，setCode只接受一个整数类型的参数，setErrInfo则在setCode的基础上增加接受一个string类型参数作为错误的描述
-
-playbook执行lua脚本是从lua脚本定义的exec函数开始的，multi_ssh的lua脚本推荐整个文件没有在函数之外的代码，建议过于复杂的逻辑抽离成单独的函数，最终在exec函数中调用
+```lua
+tools = {
+    sleep: function(secends: int),
+    setShareIotaMax: function(max: int),
+    getShareIota: function() -> int,
+    newWaitGroup: function() -> {
+        add: function(i: int),
+        done: function(),
+        wait: function(),
+    },
+    newTokenBucket: function(max: int) -> {
+    	get: function() -> int,
+    },
+    newMux: function() -> {
+    	lock: function(),
+       	unlock: function(),
+        rLock: function(),
+        rUnlock: function(),
+  	},
+   	newSafeTable: function() -> {
+        append: function(val),
+        set: function(key, val),
+        get: function(key) -> val,
+        len: function() -> int,
+        rLock: function(),
+        rUnlock: function(),
+        into: function() -> {},
+    },
+	str: {
+        split: function(src: str, option(sep, default=' ')) -> []str,
+        hasPrefix: function(s: str) -> bool,
+        hasSuffix: function(s: str) -> bool,
+        trim: function(s: str) -> bool,
+        replace: function(s: str, old: str, new: str, option(count: int, default=-1)) -> []str,
+        contain: function(s: str, sub: str) -> bool
+    },
+    re: {
+        match: function(s: str, re: str) -> bool,
+        find: function(s: str, re: str, mode: option(mode: emnu('sub', 'sub_all', 'str', 'str_all'), default='sub_all')) -> emnu(str, []str),
+        replace: function(s: str, re: str, new: str) -> str
+        split: function(s: str, re: str, count: option(count: int, default=-1)) -> []str,
+        splitSpace: function(s: str) -> []str,
+    },
+}
+```
 
