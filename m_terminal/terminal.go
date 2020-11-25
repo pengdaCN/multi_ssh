@@ -1,6 +1,7 @@
 package m_terminal
 
 import (
+	"errors"
 	"fmt"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -55,14 +56,30 @@ func DefaultWithPassphrase(user model.SHHUser) (*Terminal, error) {
 	return term, nil
 }
 
-func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
+const defaultOpenClientTimeout = time.Duration(time.Second * 10)
+
+func getClientWithTimeout(user model.SHHUser) (client *ssh.Client, err error) {
+	ch := make(chan struct{})
 	config := ssh.ClientConfig{
 		User:            user.User(),
 		Auth:            user.Auth(),
 		Timeout:         time.Second * 5,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	client, err := ssh.Dial("tcp", user.Host(), &config)
+	go func() {
+		client, err = ssh.Dial("tcp", user.Host(), &config)
+		ch <- struct{}{}
+	}()
+	select {
+	case <-time.After(defaultOpenClientTimeout):
+		return nil, errors.New("open client timeout")
+	case <-ch:
+		return
+	}
+}
+
+func GetSSHClientByPassphrase(user model.SHHUser) (*Terminal, error) {
+	client, err := getClientWithTimeout(user)
 	if err != nil {
 		return nil, err
 	}
