@@ -454,3 +454,27 @@ func newSafeTable(state *lua.LState) int {
 	state.Push(SetReadOnly(state, tb))
 	return 1
 }
+
+func NewOnce(state *lua.LState) int {
+	var once sync.Once
+	do := func(lState *lua.LState) int {
+		val := lState.Get(1)
+		fn, ok := val.(*lua.LFunction)
+		if !ok {
+			lState.RaiseError("need a function")
+			return 0
+		}
+		once.Do(func() {
+			_ = lState.CallByParam(lua.P{
+				Fn:      fn,
+				NRet:    0,
+				Protect: true,
+			})
+		})
+		return 0
+	}
+	tb := state.NewTable()
+	tb.RawSetString("Do", state.NewFunction(do))
+	state.Push(SetReadOnly(state, tb))
+	return 1
+}

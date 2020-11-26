@@ -239,6 +239,9 @@ tools = {
         rUnlock: function(),
         into: function() -> {},
     },
+    newOnce: function -> {
+    	Do: function(function)
+    }
 	str: {
         split: function(src: str, option(sep, default=' ')) -> []str,
         hasPrefix: function(s: str) -> bool,
