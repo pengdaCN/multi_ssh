@@ -25,6 +25,7 @@ type SSHUserByPassphrase struct {
 	RemoteHost string
 	UserName   string
 	Password   string
+	PriFile    []byte
 	ExtraField map[string]string
 }
 
@@ -43,33 +44,6 @@ func ReadHosts(fil string) ([]*SSHUserByPassphrase, error) {
 		return nil, err
 	}
 	return ReadLines(tools.ByteSlice2String(context))
-	//read := bufio.NewReader(bytes.NewReader(context))
-	//rst := make([]*SSHUserByPassphrase, 0)
-	//// 用于选出重复的条目
-	//m := make(map[string]struct{})
-	//var lineNumber int
-	//for {
-	//	lineNumber++
-	//	line, err := read.ReadString('\n')
-	//	line = strings.TrimSpace(line)
-	//	if err != nil {
-	//		if s := ReadLine(line); s != nil {
-	//			// 去除处重复的条目
-	//			if !isRepeat(m, s) {
-	//				s.line = lineNumber
-	//				rst = append(rst, s)
-	//			}
-	//		}
-	//		break
-	//	}
-	//	if s := ReadLine(line); s != nil {
-	//		if !isRepeat(m, s) {
-	//			s.line = lineNumber
-	//			rst = append(rst, s)
-	//		}
-	//	}
-	//}
-	//return rst, nil
 }
 
 func ReadLines(context string) ([]*SSHUserByPassphrase, error) {
@@ -110,6 +84,8 @@ func ReadLine(line string) *SSHUserByPassphrase {
 	return ParseFromRHostInfo(info)
 }
 
+const priKey = "PRIKEY"
+
 func ParseFromRHostInfo(info *RemoteHostInfo) *SSHUserByPassphrase {
 	s := new(SSHUserByPassphrase)
 	s.UserName = info.UserName
@@ -119,6 +95,14 @@ func ParseFromRHostInfo(info *RemoteHostInfo) *SSHUserByPassphrase {
 		if !s.ParseExtra(info.Extra) {
 			log.Printf("host %s 解析扩展字符串失败", info.Host)
 		}
+	}
+	if path, ok := s.ExtraField[priKey]; ok {
+		b, err := ioutil.ReadFile(path)
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		s.PriFile = b
 	}
 	return s
 }
@@ -132,6 +116,9 @@ func (s *SSHUserByPassphrase) User() string {
 }
 
 func (s *SSHUserByPassphrase) Auth() []ssh.AuthMethod {
+	if s.PriFile != nil {
+		return []ssh.AuthMethod{publicKeyAuthFunc(s.PriFile)}
+	}
 	return []ssh.AuthMethod{ssh.Password(s.Password)}
 }
 
@@ -255,4 +242,13 @@ END:
 
 func (s *SSHUserByPassphrase) Identify() string {
 	return fmt.Sprintf("SSHUserByPassphrase-%s@%s", s.UserName, s.RemoteHost)
+}
+
+func publicKeyAuthFunc(b []byte) ssh.AuthMethod {
+	// Create the Signer for this private key.
+	signer, err := ssh.ParsePrivateKey(b)
+	if err != nil {
+		log.Fatal("ssh key signer failed", err)
+	}
+	return ssh.PublicKeys(signer)
 }

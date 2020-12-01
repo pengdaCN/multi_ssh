@@ -1,6 +1,7 @@
 package m_terminal
 
 import (
+	"errors"
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io"
@@ -141,11 +142,18 @@ func (s *TermSession) Run(enableSudo bool, cmd string) error {
 
 const sudoPrefix = "[sudo] password for %s: "
 
+var (
+	ErrInvalidPassphrase = errors.New("error invalid passphrase")
+)
+
 func sudo(u model.SHHUser, in []byte, out io.Writer) error {
 	line := string(in)
 	beenMatched := fmt.Sprintf(sudoPrefix, u.User())
 	if strings.Contains(beenMatched, line) {
-		u, _ := u.(*model.SSHUserByPassphrase)
+		u, ok := u.(*model.SSHUserByPassphrase)
+		if !ok || u.Password == "" {
+			return ErrInvalidPassphrase
+		}
 		_, err := out.Write([]byte(u.Password + "\n"))
 		if err != nil {
 			return err

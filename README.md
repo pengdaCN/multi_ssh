@@ -241,7 +241,7 @@ tools = {
     },
     newOnce: function -> {
     	Do: function(function)
-    }
+    },
 	str: {
         split: function(src: str, option(sep, default=' ')) -> []str,
         hasPrefix: function(s: str) -> bool,
@@ -258,5 +258,14 @@ tools = {
         splitSpace: function(s: str) -> []str,
     },
 }
+```
+
+### 关于使用密钥进行登陆的配置
+
+如需要使用密钥进行登陆，则需要在hosts文件中，该主机的扩展字段中设置`PRIKEY='pri_key_path'`，如下
+
+```txt
+root,,192.168.0.2:22; `PRIKEY="/home/user/id_rsa"`
+root,123456,192.168.0.3:22; `PRIKEY="/home/user/id_rsa"`
 ```
 

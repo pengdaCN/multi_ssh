@@ -6,8 +6,6 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"io"
-	"io/ioutil"
-	"log"
 	"multi_ssh/model"
 	"multi_ssh/tools"
 	"sync"
@@ -226,17 +224,4 @@ func (t *Terminal) GetTaskStat() (stat bool) {
 	stat = t.taskStat
 	t.mu.RUnlock()
 	return
-}
-
-func publicKeyAuthFunc(keyPath string) ssh.AuthMethod {
-	key, err := ioutil.ReadFile(keyPath)
-	if err != nil {
-		log.Fatal("ssh key file read failed", err)
-	}
-	// Create the Signer for this private key.
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		log.Fatal("ssh key signer failed", err)
-	}
-	return ssh.PublicKeys(signer)
 }
