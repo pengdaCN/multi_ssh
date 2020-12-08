@@ -1,93 +1,41 @@
 package common
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
 
 const (
-	chg    rune = '\\'
-	border      = `'"`
+	chg rune = '\\'
+)
+
+var (
+	ReadBetween = readRuneBetween
 )
 
 var (
 	firstChar = regexp.MustCompile(`(?:\s+)?.`)
-	//endWithSpace   = regexp.MustCompile(`[^\s]*`)
-	endWithSingleB = regexp.MustCompile(`.*?(?:')`)
-	endWithDoubleB = regexp.MustCompile(`.*?(?:")`)
-	firstWord      = regexp.MustCompile(`^\s*[a-zA-Z_](?:\w)*`)
+	firstWord = regexp.MustCompile(`^\s*[a-zA-Z_](?:\w)*`)
 )
 
 func ReadStr(src string) (str string, stream string) {
 	var (
-		b     string
-		bchar byte
-		rst   strings.Builder
+		single = [2]rune{'\'', '\''}
+		double = [2]rune{'"', '"'}
 	)
-	f := firstChar.FindString(src)
-	l := len(f)
-	if l == 0 {
-		return "", ""
+	if str, stream = readRuneBetween(src, single); str != "" {
+		return
 	}
-	{
-		f = string(f[len(f)-1])
-	}
-	src = src[l:]
-	if strings.Contains(border, f) {
-		b = f
-		bchar = b[0]
-	} else {
-		panic("ERROR unknown border char")
-	}
-	var (
-		useSearchWord *regexp.Regexp
-	)
-	switch b {
-	case `'`:
-		useSearchWord = endWithSingleB
-	case `"`:
-		useSearchWord = endWithDoubleB
-	}
-	var s string
-TAKE:
-	s = useSearchWord.FindString(src)
-	if s == "" {
-		panic("ERROR")
-	}
-	src = src[len(s):]
-	for {
-		i := strings.IndexRune(s, chg)
-		if i == -1 {
-			rst.WriteString(s[:len(s)-1])
-			break
-		}
-		rst.WriteString(s[:i])
-		switch s[i+1] {
-		case bchar:
-			rst.WriteByte(bchar)
-			if i == len(s)-1-1 {
-				goto TAKE
-			}
-		case 'n':
-			rst.WriteRune('\n')
-		case 'r':
-			rst.WriteRune('\r')
-		case 'v':
-			rst.WriteRune('\v')
-		case '\\':
-			rst.WriteRune('\\')
-		case 't':
-			rst.WriteRune('\t')
-		case 'b':
-			rst.WriteRune('\b')
-		case 'f':
-			rst.WriteRune('\f')
-		default:
-			panic("ERROR Bad escape character")
-		}
-		s = s[i+2:]
-	}
-	return rst.String(), src
+	str, stream = readRuneBetween(src, double)
+	return
+}
+
+func ReadNotSpaceChar(src string) (str, stream string) {
+	word := firstWord.FindString(src)
+	str = strings.TrimSpace(word)
+	stream = src[len(word):]
+	return
 }
 
 func ReadWord(src string) (word string, stream string) {
@@ -97,5 +45,69 @@ func ReadWord(src string) (word string, stream string) {
 	}
 	stream = src[len(word):]
 	word = strings.TrimSpace(word)
+	return
+}
+
+func expandCharts(sb *strings.Builder, str string) {
+	for {
+		i := strings.IndexRune(str, chg)
+		if i < 0 {
+			sb.WriteString(str)
+			return
+		}
+		if i < len(str)-1 {
+			sb.WriteString(str[:i])
+			switch str[i+1] {
+			case 'n':
+				sb.WriteRune('\n')
+			case 'r':
+				sb.WriteRune('\r')
+			case 'v':
+				sb.WriteRune('\v')
+			case '\\':
+				sb.WriteRune('\\')
+			case 't':
+				sb.WriteRune('\t')
+			case 'b':
+				sb.WriteRune('\b')
+			case 'f':
+				sb.WriteRune('\f')
+			default:
+				panic("ERROR Bad escape character")
+			}
+			str = str[i+1:]
+		} else {
+			panic("ERROR Bad escape character")
+		}
+	}
+
+}
+
+// 起至和结束符号不能为/ 与空白字符
+func readRuneBetween(src string, symbol [2]rune) (rst, stream string) {
+	firstCharts := firstChar.FindString(src)
+	if firstCharts == "" {
+		return "", src
+	}
+	if !strings.HasSuffix(firstCharts, string(symbol[0])) {
+		return "", src
+	}
+	src = src[len(firstCharts):]
+	var sb strings.Builder
+	endS := fmt.Sprintf(`\%s`, string(symbol[1]))
+WALK:
+	i := strings.IndexRune(src, symbol[1])
+	if i < 0 {
+		panic("ERROR no normal end")
+	}
+	if strings.HasSuffix(src[:i+1], endS) {
+		expandCharts(&sb, src[:i-len(endS)+1])
+		sb.WriteRune(symbol[1])
+		src = src[i+1:]
+		goto WALK
+	}
+	sb.WriteString(src[:i])
+	src = src[i:]
+	rst = sb.String()
 	return
 }

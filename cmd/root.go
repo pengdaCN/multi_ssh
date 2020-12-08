@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const version = `0.3.7`
+const version = `0.3.8`
 
 type (
 	userSlice []model.SHHUser
@@ -37,7 +37,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&hostLine, "line", "", "", "从cli中读取要连接的信息")
 	rootCmd.Flags().StringVarP(&outFormat, "format", "f", defaultOutputFormat, "以指定格式输出信息")
 	rootCmd.Flags().StringVarP(&filterStr, "filter", "F", "", "使用格式选择需要执行的主机")
-	rootCmd.Flags().BoolVarP(&preInfo, "uinfo", "", true, "是否在对主机操作之前获取他的信息")
+	rootCmd.Flags().BoolVarP(&preInfo, "uinfo", "", false, "是否在对主机操作之前获取他的信息")
 	rootCmd.Flags().DurationVarP(&timeout, "wait", "w", -1, "设置超时，默认不永不超时")
 	rootCmd.Flags().IntVarP(&execableNums, "limit-exec", "L", -1, "限制执行连接主机最大个数，默认限制")
 }
@@ -96,7 +96,7 @@ var rootCmd = cobra.Command{
 				} else {
 					log.Printf("打开%s成功", user.Host())
 				}
-				if preInfo {
+				if !preInfo {
 					m_terminal.GetRemoteHostInfo(c)
 				}
 				c.SetBirthID(bi + 1)

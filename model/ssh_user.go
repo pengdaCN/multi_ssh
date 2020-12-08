@@ -6,6 +6,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"log"
+	"multi_ssh/common"
 	"multi_ssh/tools"
 	"regexp"
 	"strings"
@@ -138,6 +139,34 @@ func (s *SSHUserByPassphrase) ParseExtra(str string) bool {
 
 func (s *SSHUserByPassphrase) Line() int {
 	return s.line
+}
+
+var (
+	space = common.GetRe(`\s+`)
+)
+
+func parseExtra(extraStr string) (rst map[string]string) {
+	extraStr, _ = common.ReadBetween(extraStr, [2]rune{'`', '`'})
+	if extraStr == "" {
+		return
+	}
+	for {
+		var (
+			key string
+			sym string
+			val string
+		)
+		if extraStr == "" || space.MatchString(extraStr) {
+			return
+		}
+		key, extraStr = common.ReadWord(extraStr)
+		sym, extraStr = common.ReadNotSpaceChar(extraStr)
+		if sym != "=" {
+			panic("parse extra error")
+		}
+		val, extraStr = common.ReadStr(extraStr)
+		rst[key] = val
+	}
 }
 
 var (

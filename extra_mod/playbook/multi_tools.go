@@ -2,6 +2,7 @@ package playbook
 
 import (
 	lua "github.com/yuin/gopher-lua"
+	"multi_ssh/common"
 	"regexp"
 	"strings"
 	"sync"
@@ -167,7 +168,7 @@ func reFind(state *lua.LState) int {
 	str = state.ToString(1)
 	re = state.ToString(2)
 	mode = state.ToString(3)
-	_re := regexp.MustCompile(re)
+	_re := common.GetRe(re)
 	if mode == "" || mode == lua.LTNil.String() {
 		// 为兼容之前的版本
 		mode = "sub"
@@ -213,7 +214,7 @@ func reSplit(state *lua.LState) int {
 	)
 	str = state.ToString(1)
 	re = state.ToString(2)
-	_re := regexp.MustCompile(re)
+	_re := common.GetRe(re)
 	_arr := _re.Split(str, -1)
 	strSliceToTable(arr, _arr)
 	return 1
@@ -243,7 +244,7 @@ func reReplace(state *lua.LState) int {
 	str = state.ToString(1)
 	re = state.ToString(2)
 	newStr = state.ToString(3)
-	_re := regexp.MustCompile(re)
+	_re := common.GetRe(re)
 	_newStr := _re.ReplaceAllString(str, newStr)
 	state.Push(lua.LString(_newStr))
 	return 1
