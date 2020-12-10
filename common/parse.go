@@ -24,15 +24,15 @@ func ReadStr(src string) (str string, stream string) {
 		single = [2]rune{'\'', '\''}
 		double = [2]rune{'"', '"'}
 	)
-	if str, stream = readRuneBetween(src, single); str != "" {
+	if str, stream = readRuneBetween(src, single, true); str != "" {
 		return
 	}
-	str, stream = readRuneBetween(src, double)
+	str, stream = readRuneBetween(src, double, true)
 	return
 }
 
 func ReadNotSpaceChar(src string) (str, stream string) {
-	word := firstWord.FindString(src)
+	word := firstChar.FindString(src)
 	str = strings.TrimSpace(word)
 	stream = src[len(word):]
 	return
@@ -84,30 +84,39 @@ func expandCharts(sb *strings.Builder, str string) {
 }
 
 // 起至和结束符号不能为/ 与空白字符
-func readRuneBetween(src string, symbol [2]rune) (rst, stream string) {
-	firstCharts := firstChar.FindString(src)
+func readRuneBetween(src string, symbol [2]rune, expand bool) (rst, stream string) {
+	stream = src
+	firstCharts := firstChar.FindString(stream)
 	if firstCharts == "" {
-		return "", src
+		return "", stream
 	}
 	if !strings.HasSuffix(firstCharts, string(symbol[0])) {
-		return "", src
+		return "", stream
 	}
-	src = src[len(firstCharts):]
+	stream = stream[len(firstCharts):]
 	var sb strings.Builder
 	endS := fmt.Sprintf(`\%s`, string(symbol[1]))
 WALK:
-	i := strings.IndexRune(src, symbol[1])
+	i := strings.IndexRune(stream, symbol[1])
 	if i < 0 {
 		panic("ERROR no normal end")
 	}
-	if strings.HasSuffix(src[:i+1], endS) {
-		expandCharts(&sb, src[:i-len(endS)+1])
+	if strings.HasSuffix(stream[:i+1], endS) {
+		if expand {
+			expandCharts(&sb, stream[:i-len(endS)+1])
+		} else {
+			sb.WriteString(stream[:i-len(endS)+1])
+		}
 		sb.WriteRune(symbol[1])
-		src = src[i+1:]
+		stream = stream[i+1:]
 		goto WALK
 	}
-	sb.WriteString(src[:i])
-	src = src[i:]
+	if expand {
+		expandCharts(&sb, stream[:i])
+	} else {
+		sb.WriteString(stream[:i])
+	}
+	stream = stream[i+1:]
 	rst = sb.String()
 	return
 }
