@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"log"
+	"multi_ssh/cro"
 	"multi_ssh/m_terminal"
 	"multi_ssh/model"
 	"os"
@@ -11,10 +12,14 @@ import (
 	"time"
 )
 
-const version = `0.3.8`
+const version = `0.3.9`
 
 type (
 	userSlice []model.SHHUser
+)
+
+var (
+	globalBuilder = cro.New()
 )
 
 var (
@@ -63,20 +68,9 @@ var rootCmd = cobra.Command{
 	Args:             cobra.MaximumNArgs(0),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if hostLine != "" {
-			u := model.ReadLine(hostLine)
-			if u == nil {
-				log.Fatalln("ERROR 使用命令行参数错误")
-			}
-			users = append(users, u)
+			globalBuilder.RawHostsInfo(hostLine)
 		} else {
-			us, err := model.ReadHosts(hosts)
-			if err != nil {
-				log.Println(err.Error())
-				os.Exit(1)
-			}
-			for _, u := range us {
-				users = append(users, u)
-			}
+			globalBuilder.Hosts(hosts)
 		}
 		if filterStr != "" {
 			users = filters(users, filterStr)

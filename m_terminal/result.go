@@ -1,6 +1,9 @@
 package m_terminal
 
-import "golang.org/x/crypto/ssh"
+import (
+	"errors"
+	"golang.org/x/crypto/ssh"
+)
 
 type Result struct {
 	code    int
@@ -54,8 +57,9 @@ func buildRst(msg string, err error) *Result {
 	if err != nil {
 		r.errInfo = err.Error()
 	}
-	if exit, ok := err.(*ssh.ExitError); ok {
-		r.code = exit.ExitStatus()
+	var exitErr *ssh.ExitError
+	if errors.As(err, &exitErr) {
+		r.code = exitErr.ExitStatus()
 	}
 	return r
 }
