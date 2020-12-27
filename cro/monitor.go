@@ -1,4 +1,4 @@
-package cmd
+package cro
 
 import (
 	"bytes"
@@ -8,30 +8,21 @@ import (
 	"strings"
 )
 
-func init() {
-	go monitor()
-}
-
 const keywords = "show"
 
-func monitor() {
+func (s *baseRunEnv) monitor() {
 	var (
 		msg     string
 		curInfo string
-		//ch  chan *execResult
 	)
-	//go func() {
-	//	c := output(ch, defaultOutputFormat, os.Stdout)
-	//	<-c
-	//}()
 	for {
 		_, _ = fmt.Scanln(&msg)
 		m := strings.TrimSpace(msg)
 		if m == keywords {
-			if terminals == nil {
+			if s.terms == nil {
 				continue
 			}
-			for _, term := range terminals {
+			for _, term := range s.terms {
 				if term.GetTaskStat() {
 					continue
 				}
@@ -39,22 +30,12 @@ func monitor() {
 					sb := o.(*strings.Builder)
 					str := sb.String()
 					curInfo = str
-					//ch <- &execResult{
-					//	code: 0,
-					//	u:    term.GetUser(),
-					//	msg:  msg,
-					//}
 					curInfo += fmt.Sprintf("\nshell cur: {\n%s\n}", tail(term.GetMsg(), 10))
 					fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), curInfo)
 					continue
 				}
 				curInfo = tail(term.GetMsg(), 10)
 				fmt.Printf("%s:%s {\n%s\n}", term.GetUser().User(), term.GetUser().Host(), curInfo)
-				//ch <- &execResult{
-				//	code: 0,
-				//	u:    term.GetUser(),
-				//	msg:  msg,
-				//}
 				continue
 			}
 		}

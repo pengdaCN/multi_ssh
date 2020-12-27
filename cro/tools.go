@@ -15,7 +15,7 @@ import (
 	"sync"
 )
 
-const defaultOutputFormat = "#{user}@#{host}: {\n#{msg}\n}\n"
+const DefaultOutputFormat = "#{user}@#{host}: {\n#{msg}\n}\n"
 
 var (
 	printf  reflect.Value

@@ -4,19 +4,11 @@ import (
 	"github.com/spf13/cobra"
 	"log"
 	"multi_ssh/cro"
-	"multi_ssh/m_terminal"
-	"multi_ssh/model"
 	"os"
-	"sort"
-	"sync"
 	"time"
 )
 
 const version = `0.3.9`
-
-type (
-	userSlice []model.SHHUser
-)
 
 var (
 	globalBuilder = cro.New()
@@ -29,34 +21,18 @@ var (
 	filterStr    string
 	execableNums int
 	preInfo      bool
-)
-
-var (
-	terminals []*m_terminal.Terminal
-	users     userSlice
 	timeout   time.Duration
 )
+
 
 func init() {
 	rootCmd.Flags().StringVarP(&hosts, "hosts", "", "./hosts", "multi_ssh 读取hosts配置文件")
 	rootCmd.Flags().StringVarP(&hostLine, "line", "", "", "从cli中读取要连接的信息")
-	rootCmd.Flags().StringVarP(&outFormat, "format", "f", defaultOutputFormat, "以指定格式输出信息")
+	rootCmd.Flags().StringVarP(&outFormat, "format", "f", cro.DefaultOutputFormat, "以指定格式输出信息")
 	rootCmd.Flags().StringVarP(&filterStr, "filter", "F", "", "使用格式选择需要执行的主机")
 	rootCmd.Flags().BoolVarP(&preInfo, "uinfo", "", false, "是否在对主机操作之前获取他的信息")
 	rootCmd.Flags().DurationVarP(&timeout, "wait", "w", -1, "设置超时，默认不永不超时")
 	rootCmd.Flags().IntVarP(&execableNums, "limit-exec", "L", -1, "限制执行连接主机最大个数，默认限制")
-}
-
-func (u userSlice) Less(v1, v2 int) bool {
-	return u[v1].Line() < u[v2].Line()
-}
-
-func (u userSlice) Swap(v1, v2 int) {
-	u[v1], u[v2] = u[v2], u[v1]
-}
-
-func (u userSlice) Len() int {
-	return len(u)
 }
 
 var rootCmd = cobra.Command{
@@ -72,42 +48,7 @@ var rootCmd = cobra.Command{
 		} else {
 			globalBuilder.Hosts(hosts)
 		}
-		if filterStr != "" {
-			users = filters(users, filterStr)
-		}
-		// 使用行号进行排序
-		sort.Sort(users)
-		ch := make(chan *m_terminal.Terminal, 0)
-		var w sync.WaitGroup
-		for i, u := range users {
-			w.Add(1)
-			go func(user model.SHHUser, bi int) {
-				defer w.Done()
-				c, err := m_terminal.DefaultWithPassphrase(user)
-				if err != nil {
-					log.Printf("打开%s失败 %s", user.Host(), err)
-					return
-				} else {
-					log.Printf("打开%s成功", user.Host())
-				}
-				if !preInfo {
-					m_terminal.GetRemoteHostInfo(c)
-				}
-				c.SetBirthID(bi + 1)
-				ch <- c
-			}(u, i)
-		}
-		var w2 sync.WaitGroup
-		w2.Add(1)
-		go func() {
-			defer w2.Done()
-			for i := range ch {
-				terminals = append(terminals, i)
-			}
-		}()
-		w.Wait()
-		close(ch)
-		w2.Wait()
+		globalBuilder.Format(outFormat).Filter(filterStr).PreInfo(!preInfo).SetMaxExecSeveral(execableNums).Timeout(timeout)
 	},
 }
 

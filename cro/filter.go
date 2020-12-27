@@ -1,4 +1,4 @@
-package cmd
+package cro
 
 import (
 	"multi_ssh/extra_mod/pool"

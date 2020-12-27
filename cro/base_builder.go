@@ -14,6 +14,7 @@ type baseTaskBuilder struct {
 	rawHostsInfo string
 	// 输出信息格式
 	format string
+	filerStr string
 	// 任务信息输出位置
 	out            io.Writer
 	execMaxSeveral int
@@ -39,7 +40,8 @@ func (c *baseTaskBuilder) Out(o io.Writer) *baseTaskBuilder {
 	return c
 }
 
-func (c *baseTaskBuilder) Filter() *baseTaskBuilder {
+func (c *baseTaskBuilder) Filter(f string) *baseTaskBuilder {
+	c.filerStr = f
 	return c
 }
 

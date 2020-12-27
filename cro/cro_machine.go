@@ -37,6 +37,7 @@ type baseRunEnv struct {
 	conf           *baseTaskBuilder
 	users          userSlice
 	outFormat      string
+	filter string
 	outSite        io.Writer
 	execTimeout    time.Duration
 	maxExecSeveral int
@@ -65,15 +66,21 @@ func getBaseRunEnvFromBaseBuilder(b *baseTaskBuilder) (br *baseRunEnv, err error
 	sort.Sort(br.users)
 	br.execTimeout = b.timeout
 	br.outFormat = b.format
+	br.filter = b.filerStr
 	if br.outFormat == "" {
-		br.outFormat = defaultOutputFormat
+		br.outFormat = DefaultOutputFormat
 	}
-	br.outSite = b.out
+	if b.out == nil {
+		br.outSite = os.Stdout
+	}
 	br.conf = b
 	return
 }
 
 func (b *baseRunEnv) ready() {
+	if b.filter != "" {
+		b.users = filters(b.users, b.filter)
+	}
 	ch := make(chan *m_terminal.Terminal, 0)
 	if b.terms != nil {
 		b.terms = b.terms[:0]
@@ -90,7 +97,7 @@ func (b *baseRunEnv) ready() {
 			} else {
 				log.Printf("打开%s成功", user.Host())
 			}
-			if !b.conf.preInfo {
+			if b.conf.preInfo {
 				m_terminal.GetRemoteHostInfo(c)
 			}
 			c.SetBirthID(bi + 1)
@@ -108,6 +115,7 @@ func (b *baseRunEnv) ready() {
 	w.Wait()
 	close(ch)
 	w2.Wait()
+	go b.monitor()
 }
 
 func (b *baseRunEnv) runEach(fn func(m *m_terminal.Terminal)) chan struct{} {

@@ -2,9 +2,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"io"
-	"multi_ssh/m_terminal"
-	"os"
 )
 
 func init() {
@@ -24,27 +21,6 @@ var shellCmd = cobra.Command{
 	Example: "shell --sudo 'command'",
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		ch := make(chan *execResult, 0)
-		out := []io.Writer{
-			os.Stdout,
-		}
-		if shellSaveFile != "" {
-			fil, err := os.Create(scriptSaveFile)
-			if err != nil {
-				panic(err)
-			}
-			out = append(out, fil)
-		}
-		outFinish := output(ch, outFormat, out...)
-		execFinish := eachTerm(terminals, func(term *m_terminal.Terminal) {
-			rst := term.Run(shellSudo, args[0])
-			term.CfgStat()
-			r := buildExecResultFromResult(rst)
-			r.u = term.GetUser()
-			ch <- r
-		})
-		<-execFinish
-		close(ch)
-		<-outFinish
+		globalBuilder.NewShellBuilder().Sudo(shellSudo).Cmds(args[0]).Builder().Run()
 	},
 }
