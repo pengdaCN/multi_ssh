@@ -12,6 +12,7 @@ func NewLuaTerm(state *lua.LState, term *m_terminal.Terminal, cancel context.Can
 	state.SetField(tab, "shell", state.NewFunction(newShell(term)))
 	state.SetField(tab, "script", state.NewFunction(newScript(term)))
 	state.SetField(tab, "copy", state.NewFunction(newCopy(term)))
+	state.SetField(tab, "context", state.NewFunction(newContext(term)))
 	state.SetField(tab, "out", state.NewFunction(newOut(term)))
 	state.SetField(tab, "outln", state.NewFunction(newOutLn(term)))
 	state.SetField(tab, "extraInfo", state.NewFunction(newExtra(term)))

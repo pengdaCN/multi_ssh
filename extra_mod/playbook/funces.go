@@ -84,6 +84,33 @@ func newScript(term *m_terminal.Terminal) lua.LGFunction {
 	}
 }
 
+func newContext(term *m_terminal.Terminal) lua.LGFunction {
+	return func(state *lua.LState) int {
+		var (
+			filename string
+			text     string
+			read     io.Reader
+			rst      *m_terminal.Result
+		)
+		part := state.ToTable(1)
+		filename = lvalueToStr(part.RawGetString("filename"))
+		// 若有text选项，则优先使用text选项内容作为脚本执行
+		text = lvalueToStr(part.RawGetString("text"))
+
+		read = strings.NewReader(text)
+
+		ctx := useTimeoutFromLvalue(part.RawGetString("timeout"))
+		tools.WithCancel(ctx, func() {
+			rst = m_terminal.BuildRstByErr(term.SftpUpdateByReaderWithFunc(filename, read, `./`))
+		})
+		if rst == nil {
+			rst = new(m_terminal.Result)
+		}
+		state.Push(rstToLTable(state, rst))
+		return 1
+	}
+}
+
 func newCopy(term *m_terminal.Terminal) lua.LGFunction {
 	return func(state *lua.LState) int {
 		var (

@@ -37,7 +37,7 @@ type baseRunEnv struct {
 	conf           *baseTaskBuilder
 	users          userSlice
 	outFormat      string
-	filter string
+	filter         string
 	outSite        io.Writer
 	execTimeout    time.Duration
 	maxExecSeveral int

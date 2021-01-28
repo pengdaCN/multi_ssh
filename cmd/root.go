@@ -21,9 +21,8 @@ var (
 	filterStr    string
 	execableNums int
 	preInfo      bool
-	timeout   time.Duration
+	timeout      time.Duration
 )
-
 
 func init() {
 	rootCmd.Flags().StringVarP(&hosts, "hosts", "", "./hosts", "multi_ssh 读取hosts配置文件")

@@ -186,23 +186,24 @@ term = {
     shell: function({sudo: bool, 'commands'}),
     script: function({sudo: bool, text: str, 'script_path'}),
     copy: function({sudo: bool, exists: bool, {'src1', 'src2'}| 'src', 'dst'}),
+    context: function({text: string, filename: string),
     out: function(msg: str),
     outln: function(msg: str),
     extraInfo: function(),
-	hostInfo: function(),
+    hostInfo: function(),
     setCode: function(code: int),
     setErrCode: function(code: int, errInfo: str),
     sleep: function(secends: int),
     hostInfo: {
-    	line: int,
+        line: int,
         ip: str,
         port: str,
         user: str,
         extra: {
-        	key: val
+            key: val
         }
     }
-   	iota: int
+    iota: int
     exit: function()
 }
 ```
@@ -240,7 +241,7 @@ tools = {
         into: function() -> {},
     },
     newOnce: function -> {
-    	Do: function(function)
+    	Do: function(function),
     },
 	str: {
         split: function(src: str, option(sep, default=' ')) -> []str,

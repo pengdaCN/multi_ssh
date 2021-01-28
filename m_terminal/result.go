@@ -64,6 +64,8 @@ func buildRst(msg string, err error) *Result {
 	return r
 }
 
+var BuildRstByErr = buildRstByErr
+
 func buildRstByErr(err error) *Result {
 	rst := buildRst("", err)
 	if err == nil {

@@ -13,7 +13,7 @@ type baseTaskBuilder struct {
 	// 原始的主机信息
 	rawHostsInfo string
 	// 输出信息格式
-	format string
+	format   string
 	filerStr string
 	// 任务信息输出位置
 	out            io.Writer
