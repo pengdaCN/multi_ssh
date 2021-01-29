@@ -240,7 +240,7 @@ tools = {
         rUnlock: function(),
         into: function() -> {},
     },
-    newOnce: function -> {
+    newOnce: function() -> {
     	Do: function(function),
     },
 	str: {
