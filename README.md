@@ -241,7 +241,7 @@ tools = {
         into: function() -> {},
     },
     newOnce: function() -> {
-    	Do: function(function),
+    	Do: function(function()),
     },
 	str: {
         split: function(src: str, option(sep, default=' ')) -> []str,
