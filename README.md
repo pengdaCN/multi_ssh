@@ -264,30 +264,10 @@ tools = {
         get: function() -> int
     },
     newMux: function() -> {
-<<<<<<< HEAD
         lock: function()
         unlock: function()
         rLock: function()
         rUnlock: function()
-=======
-    	lock: function(),
-       	unlock: function(),
-        rLock: function(),
-        rUnlock: function(),
-  	},
-   	newSafeTable: function() -> {
-        append: function(val),
-        set: function(key, val),
-        get: function(key) -> val,
-        len: function() -> int,
-        rLock: function(),
-        rUnlock: function(),
-        into: function() -> {},
-    },
-    newOnce: function() -> {
-    	Do: function(function()),
->>>>>>> f1d379e33c27df03389a9daa2c36ff7523d96d9e
-    },
     newSafeTable: function() -> {
         append: function(val: any)
         set: function(key: any, val: any)
