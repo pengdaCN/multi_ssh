@@ -182,26 +182,64 @@ end
 term对象是一个自读的userdata对象，是一组对当前主机操作的方法集合，其结构如下
 
 ```lua
+--[[
+关于一些自定义描述方法说名
+key: type
+    key 表示定义值的名字，type表示值的类型
+option(type, [default=val])
+    option 用于描述一个可选值，则值是可传，可不穿的，启动可选的default属性代表该值不传入时的默认值
+enum([(key: type)|type|val],)
+    enum 用于表示改值可以是多个类型中的一个，获取是多个值中的一个
+    若enum中的属性为 key: type 形式，则代表该参数是具名参数，及需要显示的加上参数名进行传递参数
+any 
+    任意合规的lua类型
+
+常用描述类型定义
+    str: 字符串类型
+    int: 整数类型
+    float: 浮点类型
+
+关于描述类型中function 定义解释
+    function(args: type) -> type
+    args 函数接受的参数
+    type 函数返回的值
+
+关于对象定义
+    {
+        property: type
+    }
+    property: 对象熟悉名
+    type: 对象属性类型
+
+关于map[type]type 
+    该类型可以理解为php中的关联数组，或者java中的hash map，他是以golang 中map的描述方式书写
+]]--
+
+-- 定义执行终端对象返回类型
+type result {
+    code: int -- 执行结果状态码
+    msg: str -- stdout 与 stderr 混合输出结果
+    stdout: str -- stdout 输出
+    stderr: str -- stderr 输出
+}
 term = {
-    shell: function({sudo: bool, 'commands'}),
-    script: function({sudo: bool, text: str, 'script_path'}),
-    copy: function({sudo: bool, exists: bool, {'src1', 'src2'}| 'src', 'dst'}),
-    context: function({text: string, filename: string),
+    shell: function({sudo: option(bool, default=false), command: str}) -> result
+    -- 执行一段shell 命令
+    script: function({{sudo: option(bool, default=false), enum(text: str, str)}) -> result
+    -- 执行一个shell 脚本，content值若为text="val"，则不使用最后一个参数给定的脚本路径的参数，将text类容作为脚本类型，进行执行
+    copy: function({sudo : option(bool, default=false), exists: option(bool, default=false), src: enum([]str, str), dst: str}) -> result
+    context: function({text: string, filename: string) -> result
     out: function(msg: str),
-    outln: function(msg: str),
-    extraInfo: function(),
-    hostInfo: function(),
-    setCode: function(code: int),
-    setErrCode: function(code: int, errInfo: str),
-    sleep: function(secends: int),
+    outln: function(msg: str)
+    setCode: function(code: int)
+    setErrCode: function(code: int, errInfo: str)
+    sleep: function(secends: int)
     hostInfo: {
-        line: int,
-        ip: str,
-        port: str,
-        user: str,
-        extra: {
-            key: val
-        }
+        line: int
+        ip: str
+        port: str
+        user: str
+        extra: map[str]str
     }
     iota: int
     exit: function()
@@ -214,50 +252,54 @@ tools对象是multi_ssh实现的一组全局工具方法，通过使用自读的
 
 ```lua
 tools = {
-    sleep: function(secends: int),
-    setShareIotaMax: function(max: int),
-    getShareIota: function() -> int,
+    sleep: function(secends: int)
+    setShareIotaMax: function(max: int)
+    getShareIota: function() -> int
     newWaitGroup: function() -> {
-        add: function(i: int),
-        done: function(),
-        wait: function(),
-    },
+        add: function(i: int)
+        done: function()
+        wait: function()
+    }
     newTokenBucket: function(max: int) -> {
-    	get: function() -> int,
+        get: function() -> int
     },
     newMux: function() -> {
-    	lock: function(),
-       	unlock: function(),
-        rLock: function(),
-        rUnlock: function(),
-  	},
-   	newSafeTable: function() -> {
-        append: function(val),
-        set: function(key, val),
-        get: function(key) -> val,
-        len: function() -> int,
-        rLock: function(),
-        rUnlock: function(),
-        into: function() -> {},
+        lock: function()
+        unlock: function()
+        rLock: function()
+        rUnlock: function()
     },
-    newOnce: function -> {
-    	Do: function(function),
-    },
-	str: {
-        split: function(src: str, option(sep, default=' ')) -> []str,
-        hasPrefix: function(s: str) -> bool,
-        hasSuffix: function(s: str) -> bool,
-        trim: function(s: str) -> bool,
-        replace: function(s: str, old: str, new: str, option(count: int, default=-1)) -> []str,
+    newSafeTable: function() -> {
+        append: function(val: any)
+        set: function(key: any, val: any)
+        get: function(key: any) -> any
+        len: function() -> int
+        rLock: function()
+        rUnlock: function()
+        into: function() -> {}
+    }
+    newOnce: function() -> {
+        Do: function(function())
+    }
+    newTmpl: function() -> {
+        parse: function(name: str, text: str)
+        execute: function(name: str, data: any)
+    }
+    str: {
+        split: function(src: str, sep: option(str, default=' ')) -> []str
+        hasPrefix: function(s: str) -> bool
+        hasSuffix: function(s: str) -> bool
+        trim: function(s: str) -> bool
+        replace: function(s: str, old: str, new: str, count: option(int, default=-1)) -> []str
         contain: function(s: str, sub: str) -> bool
     },
     re: {
-        match: function(s: str, re: str) -> bool,
-        find: function(s: str, re: str, mode: option(mode: emnu('sub', 'sub_all', 'str', 'str_all'), default='sub_all')) -> emnu(str, []str),
+        match: function(s: str, re: str) -> bool
+        find: function(s: str, re: str, mode: option(emnu('sub', 'sub_all', 'str', 'str_all'), default='sub_all')) -> emnu(str, []str)
         replace: function(s: str, re: str, new: str) -> str
-        split: function(s: str, re: str, count: option(count: int, default=-1)) -> []str,
-        splitSpace: function(s: str) -> []str,
-    },
+        split: function(s: str, re: str, count: option(int, default=-1)) -> []str
+        splitSpace: function(s: str) -> []str
+    }
 }
 ```
 

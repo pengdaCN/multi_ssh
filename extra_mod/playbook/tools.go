@@ -9,6 +9,34 @@ import (
 	"time"
 )
 
+func LuaValueToGoVal(val lua.LValue) interface{} {
+	switch val.Type() {
+	case lua.LTString:
+		return val.String()
+	case lua.LTNumber:
+		v := val.(lua.LNumber)
+		return float64(v)
+	case lua.LTBool:
+		v := val.(lua.LBool)
+		return bool(v)
+	case lua.LTTable:
+		v := val.(*lua.LTable)
+		m := make(map[interface{}]interface{})
+		intoLuaMap(m, v)
+		return m
+	default:
+		return nil
+	}
+}
+
+func intoLuaMap(m map[interface{}]interface{}, val *lua.LTable) {
+	val.ForEach(func(value lua.LValue, value2 lua.LValue) {
+		key := LuaValueToGoVal(value)
+		_val := LuaValueToGoVal(value2)
+		m[key] = _val
+	})
+}
+
 func SetReadOnly(l *lua.LState, table *lua.LTable) *lua.LUserData {
 	ud := l.NewUserData()
 	mt := l.NewTable()

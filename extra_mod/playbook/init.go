@@ -18,7 +18,8 @@ func init() {
 	tools.RawSetString("newTokenBucket", VM.NewFunction(newTokenBucket))
 	tools.RawSetString("newMux", VM.NewFunction(newMux))
 	tools.RawSetString("newSafeTable", VM.NewFunction(newSafeTable))
-	tools.RawSetString("newOnce", VM.NewFunction(NewOnce))
+	tools.RawSetString("newOnce", VM.NewFunction(newOnce))
+	tools.RawSetString("newTmpl", VM.NewFunction(newTmpl))
 	{
 		str := VM.NewTable()
 		tools.RawSetString("str", str)

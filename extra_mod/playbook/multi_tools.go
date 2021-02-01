@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"text/template"
 )
 
 func initStr(state *lua.LState, table *lua.LTable) {
@@ -456,7 +457,7 @@ func newSafeTable(state *lua.LState) int {
 	return 1
 }
 
-func NewOnce(state *lua.LState) int {
+func newOnce(state *lua.LState) int {
 	var once sync.Once
 	do := func(lState *lua.LState) int {
 		val := lState.Get(1)
@@ -476,6 +477,60 @@ func NewOnce(state *lua.LState) int {
 	}
 	tb := state.NewTable()
 	tb.RawSetString("Do", state.NewFunction(do))
+	state.Push(SetReadOnly(state, tb))
+	return 1
+}
+
+func newTmpl(state *lua.LState) int {
+	tmpl := template.New("MULTI_SSH_TMPL")
+	tb := state.NewTable()
+	parse := func(lState *lua.LState) int {
+		_name := lState.ToString(1)
+		if _name == "" {
+			state.RaiseError("new template must give a name")
+			return 0
+		}
+		text := lState.ToString(2)
+		if text == "" {
+			lState.RaiseError("context must not be empty")
+			return 0
+		}
+		var err error
+		tmpl, err = tmpl.New(_name).Parse(text)
+		if err != nil {
+			lState.RaiseError(err.Error())
+			return 0
+		}
+		return 0
+	}
+	execute := func(lState *lua.LState) int {
+		var (
+			name string
+			val  interface{}
+		)
+		name = lState.ToString(1)
+		if name == "" {
+			state.RaiseError("name must not be empty")
+			return 0
+		}
+		lval := lState.Get(2)
+		val = LuaValueToGoVal(lval)
+		if val == nil {
+			lState.RaiseError("nonsupport type")
+			return 0
+		}
+		var sb strings.Builder
+
+		err := tmpl.ExecuteTemplate(&sb, name, val)
+		if err != nil {
+			lState.RaiseError(err.Error())
+			return 0
+		}
+		lState.Push(lua.LString(sb.String()))
+		return 1
+	}
+	tb.RawSetString("parse", state.NewFunction(parse))
+	tb.RawSetString("execute", state.NewFunction(execute))
 	state.Push(SetReadOnly(state, tb))
 	return 1
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const version = `0.3.9`
+const version = `0.3.9_f`
 
 var (
 	globalBuilder = cro.New()

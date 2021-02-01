@@ -179,23 +179,23 @@ func newExtra(term *m_terminal.Terminal) lua.LGFunction {
 	}
 }
 
-func newHostInfo(term *m_terminal.Terminal) lua.LGFunction {
-	return func(state *lua.LState) int {
-		info := term.GetUser()
-		if info == nil {
-			state.Push(state.NewTable())
-			return 1
-		}
-		host := info.Host()
-		username := info.User()
-		m := map[string]string{
-			"host": host,
-			"user": username,
-		}
-		state.Push(mapToLTable(state, m))
-		return 1
-	}
-}
+//func newHostInfo(term *m_terminal.Terminal) lua.LGFunction {
+//	return func(state *lua.LState) int {
+//		info := term.GetUser()
+//		if info == nil {
+//			state.Push(state.NewTable())
+//			return 1
+//		}
+//		host := info.Host()
+//		username := info.User()
+//		m := map[string]string{
+//			"host": host,
+//			"user": username,
+//		}
+//		state.Push(mapToLTable(state, m))
+//		return 1
+//	}
+//}
 
 const (
 	OutKey = "output"
